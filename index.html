@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talladega Raceway - NASCAR Racing Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            overflow: hidden;
+            color: white;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #2d5a27;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ff4444;
+            min-width: 250px;
+        }
+        
+        .hud-item {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+        
+        .hud-label {
+            color: #aaa;
+            font-size: 14px;
+        }
+        
+        .hud-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        #speedometer {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 50%;
+            width: 200px;
+            height: 200px;
+            border: 3px solid #ff4444;
+        }
+        
+        #speedValue {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        #speedLabel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            color: #aaa;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        
+        .control-key {
+            display: inline-block;
+            background: #333;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin: 2px;
+            border: 1px solid #555;
+        }
+        
+        #lapInfo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #44ff44;
+            text-align: right;
+        }
+        
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            border: 3px solid #ff4444;
+            text-align: center;
+            display: none;
+            z-index: 100;
+        }
+        
+        #message h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #ff4444;
+        }
+        
+        #message p {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        
+        .tire-indicator {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin: 2px;
+        }
+        
+        .tire-good { background: #44ff44; }
+        .tire-worn { background: #ffff44; }
+        .tire-bad { background: #ff4444; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="hud">
+            <div class="hud-item">
+                <div class="hud-label">GEAR</div>
+                <div class="hud-value" id="gearValue">1</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">RPM</div>
+                <div class="hud-value" id="rpmValue">0</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">FUEL</div>
+                <div class="hud-value" id="fuelValue">100%</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">TIRE WEAR</div>
+                <div id="tireStatus">
+                    <span class="tire-indicator tire-good" id="tireFL"></span>
+                    <span class="tire-indicator tire-good" id="tireFR"></span>
+                    <span class="tire-indicator tire-good" id="tireRL"></span>
+                    <span class="tire-indicator tire-good" id="tireRR"></span>
+                </div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">WEIGHT TRANSFER</div>
+                <div class="hud-value" id="weightTransfer">0%</div>
+            </div>
+        </div>
+        
+        <div id="lapInfo">
+            <div class="hud-item">
+                <div class="hud-label">LAP</div>
+                <div class="hud-value" id="lapValue">1/3</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">POSITION</div>
+                <div class="hud-value" id="positionValue">1/20</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">BEST LAP</div>
+                <div class="hud-value" id="bestLapValue">--:--.--</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">CURRENT LAP</div>
+                <div class="hud-value" id="currentLapValue">--:--.--</div>
+            </div>
+        </div>
+        
+        <div id="speedometer">
+            <div id="speedValue">0</div>
+            <div id="speedLabel">MPH</div>
+        </div>
+        
+        <div id="controls">
+            <div><span class="control-key">W</span> / <span class="control-key">↑</span> Accelerate</div>
+            <div><span class="control-key">S</span> / <span class="control-key">↓</span> Brake</div>
+            <div><span class="control-key">A</span> / <span class="control-key">←</span> Steer Left</div>
+            <div><span class="control-key">D</span> / <span class="control-key">→</span> Steer Right</div>
+            <div><span class="control-key">SPACE</span> Handbrake</div>
+            <div><span class="control-key">R</span> Reset Car</div>
+        </div>
+        
+        <div id="message">
+            <h2 id="messageTitle">TALLADEGA RACEWAY</h2>
+            <p id="messageText">NASCAR Racing Experience</p>
+            <p style="margin-top: 20px; color: #aaa;">Press SPACE to start</p>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
