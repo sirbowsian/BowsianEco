@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COMBAT ZONE - Realistic War Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #0a0a0a;
+            font-family: 'Courier New', monospace;
+            cursor: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+        }
+        
+        #hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .hud-element {
+            position: absolute;
+            color: #c9c9c9;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-weight: bold;
+        }
+        
+        #health-bar {
+            bottom: 30px;
+            left: 30px;
+            font-size: 24px;
+        }
+        
+        #health-value {
+            color: #ff4444;
+        }
+        
+        #ammo-display {
+            bottom: 30px;
+            right: 30px;
+            font-size: 28px;
+            text-align: right;
+        }
+        
+        #ammo-count {
+            color: #ffaa00;
+            font-size: 36px;
+        }
+        
+        #kills-display {
+            top: 30px;
+            right: 30px;
+            font-size: 20px;
+        }
+        
+        #wave-display {
+            top: 30px;
+            left: 30px;
+            font-size: 20px;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.6);
+        }
+        
+        #crosshair::before {
+            width: 20px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        #crosshair::after {
+            width: 2px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        #minimap {
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 150px;
+            border: 2px solid #555;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+        }
+        
+        #minimap-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #damage-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 50%, rgba(139, 0, 0, 0.6) 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        #start-screen, #death-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            color: #c9c9c9;
+        }
+        
+        #death-screen {
+            display: none;
+        }
+        
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ff4444;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            color: #888;
+            margin-bottom: 40px;
+            letter-spacing: 4px;
+        }
+        
+        button {
+            background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+            border: 2px solid #666;
+            color: #fff;
+            padding: 15px 50px;
+            font-size: 20px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: linear-gradient(180deg, #5a5a5a 0%, #3a3a3a 100%);
+            border-color: #888;
+        }
+        
+        .controls {
+            margin-top: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        
+        #reload-indicator {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffaa00;
+            font-size: 16px;
+            display: none;
+        }
+        
+        #night-vision {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 30, 0, 0.3);
+            pointer-events: none;
+            display: none;
+            mix-blend-mode: multiply;
+        }
+        
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1),
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="hud">
+        <div id="damage-overlay"></div>
+        <div id="night-vision"></div>
+        <div class="scanlines"></div>
+        <div id="crosshair"></div>
+        <div id="health-bar" class="hud-element">HEALTH: <span id="health-value">100</span>%</div>
+        <div id="ammo-display" class="hud-element">
+            <div id="ammo-count">30</div>
+            <div>/ 90</div>
+        </div>
+        <div id="kills-display" class="hud-element">KILLS: <span id="kills-count">0</span></div>
+        <div id="wave-display" class="hud-element">WAVE: <span id="wave-count">1</span></div>
+        <div id="minimap" class="hud-element">
+            <canvas id="minimap-canvas" width="150" height="150"></canvas>
+        </div>
+        <div id="reload-indicator">RELOADING...</div>
+    </div>
+    
+    <div id="start-screen">
+        <h1>Combat Zone</h1>
+        <div class="subtitle">REALISTIC WARFARE SIMULATION</div>
+        <button id="start-btn">DEPLOY</button>
+        <div class="controls">
+            WASD - Move | MOUSE - Look/Aim<br>
+            LEFT CLICK - Fire | R - Reload<br>
+            SHIFT - Sprint | CTRL - Crouch<br>
+            V - Night Vision
+        </div>
+    </div>
+    
+    <div id="death-screen">
+        <h1>K.I.A.</h1>
+        <div class="subtitle">MISSION FAILED</div>
+        <div style="margin-bottom: 30px; font-size: 24px;">
+            Kills: <span id="final-kills" style="color: #ffaa00;">0</span> | 
+            Waves: <span id="final-waves" style="color: #ffaa00;">0</span>
+        </div>
+        <button id="restart-btn">REDEPLOY</button>
+    </div>
+
+    <script>
+        // Game Configuration
+        const CONFIG = {
+            fov: 75,
+            near: 0.1,
+            far: 1000,
+            playerSpeed: 5,
+            sprintMultiplier: 1.8,
+            crouchMultiplier: 0.4,
+            mouseSensitivity: 0.002,
+            gravity: 20,
+            jumpForce: 8,
+            maxHealth: 100,
+            reloadTime: 2000,
+            fireRate: 100,
+            bulletDamage: 35,
+            enemySpeed: 3,
+            enemyDamage: 15,
+            enemyHealth: 100
+        };
+
+        // Game State
+        let gameState = {
+            isPlaying: false,
+            health: CONFIG.maxHealth,
+            ammo: 30,
+            reserveAmmo: 90,
+            kills: 0,
+            wave: 1,
+            isReloading: false,
+            lastFireTime: 0,
+            enemies: [],
+            bullets: [],
+            particles: [],
+            buildings: [],
+            debris: []
+        };
+
+        // Player State
+        let player = {
+            x: 0,
+            y: 1.7,
+            z: 0,
+            vx: 0,
+            vy: 0,
+            vz: 0,
+            yaw: 0,
+            pitch: 0,
+            isCrouching: false,
+            isSprinting: false,
+            nightVision: false
+        };
+
+        // Input State
+        let keys = {};
+        let mouseX = 0, mouseY = 0;
+        let isPointerLocked = false;
+
+        // Canvas Setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('webgl') || canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimap-canvas');
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // 3D Math Utilities
+        function perspectiveX(x, z) {
+            if (z <= 0.1) return 0;
+            return (x / z) * (canvas.height / (2 * Math.tan(CONFIG.fov * Math.PI / 360)));
+        }
+
+        function perspectiveY(y, z) {
+            if (z <= 0.1) return 0;
+            return -(y / z) * (canvas.height / (2 * Math.tan(CONFIG.fov * Math.PI / 360)));
+        }
+
+        // Generate realistic war-torn environment
+        function generateEnvironment() {
+            gameState.buildings = [];
+            gameState.debris = [];
+            
+            // Create war-damaged buildings
+            for (let i = 0; i < 30; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 20 + Math.random() * 150;
+                const width = 8 + Math.random() * 20;
+                const height = 10 + Math.random() * 40;
+                const depth = 8 + Math.random() * 20;
+                
+                // Damage level (0-1)
+                const damage = Math.random();
+                
+                gameState.buildings.push({
+                    x: Math.cos(angle) * distance,
+                    z: Math.sin(angle) * distance,
+                    width: width,
+                    height: height,
+                    depth: depth,
+                    damage: damage,
+                    windows: Math.floor(Math.random() * 20),
+                    hasFire: damage > 0.7 && Math.random() > 0.5,
+                    smoke: damage > 0.5
+                });
+            }
+            
+            // Create debris and craters
+            for (let i = 0; i < 100; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 10 + Math.random() * 100;
+                
+                gameState.debris.push({
+                    x: Math.cos(angle) * distance,
+                    z: Math.sin(angle) * distance,
+                    size: 0.5 + Math.random() * 3,
+                    type: Math.random() > 0.5 ? 'rubble' : 'metal',
+                    rotation: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        // Spawn enemies with realistic behavior
+        function spawnEnemy() {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 30 + Math.random() * 80;
+            
+            gameState.enemies.push({
+                x: Math.cos(angle) * distance + player.x,
+                y: 0.9,
+                z: Math.sin(angle) * distance + player.z,
+                health: CONFIG.enemyHealth + (gameState.wave * 10),
+                speed: CONFIG.enemySpeed + (gameState.wave * 0.3),
+                state: 'chase',
+                lastAttack: 0,
+                uniform: Math.floor(Math.random() * 3),
+                isHit: false,
+                hitTime: 0
+            });
+        }
+
+        function spawnWave() {
+            const enemyCount = 3 + gameState.wave * 2;
+            for (let i = 0; i < enemyCount; i++) {
+                setTimeout(() => spawnEnemy(), i * 1000);
+            }
+        }
+
+        // Create blood/explosion particles
+        function createParticles(x, y, z, type, count = 10) {
+            for (let i = 0; i < count; i++) {
+                gameState.particles.push({
+                    x: x,
+                    y: y,
+                    z: z,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: Math.random() * 10,
+                    vz: (Math.random() - 0.5) * 15,
+                    life: 1,
+                    decay: 0.02 + Math.random() * 0.03,
+                    type: type,
+                    size: 2 + Math.random() * 4
+                });
+            }
+        }
+
+        // Shooting mechanics
+        function shoot() {
+            if (gameState.isReloading || gameState.ammo <= 0) {
+                if (gameState.ammo <= 0 && !gameState.isReloading) {
+                    reload();
+                }
+                return;
+            }
+            
+            const now = Date.now();
+            if (now - gameState.lastFireTime < CONFIG.fireRate) return;
+            
+            gameState.lastFireTime = now;
+            gameState.ammo--;
+            updateHUD();
+            
+            // Raycast to check hits
+            const rayDir = {
+                x: -Math.sin(player.yaw) * Math.cos(player.pitch),
+                y: Math.sin(player.pitch),
+                z: -Math.cos(player.yaw) * Math.cos(player.pitch)
+            };
+            
+            // Check enemy hits
+            for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+                const enemy = gameState.enemies[i];
+                const dx = enemy.x - player.x;
+                const dy = enemy.y - player.y;
+                const dz = enemy.z - player.z;
+                
+                // Simple hit detection
+                const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                const dot = (dx * rayDir.x + dy * rayDir.y + dz * rayDir.z) / dist;
+                
+                if (dot > 0.95 && dist < 100) {
+                    enemy.health -= CONFIG.bulletDamage;
+                    enemy.isHit = true;
+                    enemy.hitTime = Date.now();
+                    
+                    createParticles(enemy.x, enemy.y + 0.5, enemy.z, 'blood', 15);
+                    
+                    if (enemy.health <= 0) {
+                        createParticles(enemy.x, enemy.y, enemy.z, 'gore', 20);
+                        gameState.enemies.splice(i, 1);
+                        gameState.kills++;
+                        updateHUD();
+                        
+                        // Check for wave completion
+                        if (gameState.enemies.length === 0) {
+                            gameState.wave++;
+                            updateHUD();
+                            setTimeout(spawnWave, 3000);
+                        }
+                    }
+                    break;
+                }
+            }
+            
+            // Muzzle flash effect
+            createMuzzleFlash();
+        }
+
+        let muzzleFlash = { active: false, time: 0 };
+        function createMuzzleFlash() {
+            muzzleFlash.active = true;
+            muzzleFlash.time = Date.now();
+        }
+
+        function reload() {
+            if (gameState.isReloading || gameState.reserveAmmo <= 0 || gameState.ammo === 30) return;
+            
+            gameState.isReloading = true;
+            document.getElementById('reload-indicator').style.display = 'block';
+            
+            setTimeout(() => {
+                const needed = 30 - gameState.ammo;
+                const toReload = Math.min(needed, gameState.reserveAmmo);
+                gameState.ammo += toReload;
+                gameState.reserveAmmo -= toReload;
+                gameState.isReloading = false;
+                document.getElementById('reload-indicator').style.display = 'none';
+                updateHUD();
+            }, CONFIG.reloadTime);
+        }
+
+        // Update HUD
+        function updateHUD() {
+            document.getElementById('health-value').textContent = Math.floor(gameState.health);
+            document.getElementById('ammo-count').textContent = gameState.ammo;
+            document.querySelector('#ammo-display div:last-child').textContent = `/ ${gameState.reserveAmmo}`;
+            document.getElementById('kills-count').textContent = gameState.kills;
+            document.getElementById('wave-count').textContent = gameState.wave;
+            
+            // Damage overlay
+            const damageOverlay = document.getElementById('damage-overlay');
+            damageOverlay.style.opacity = (CONFIG.maxHealth - gameState.health) / CONFIG.maxHealth * 0.7;
+        }
+
+        // 3D Rendering
+        function render() {
+            // Sky gradient (realistic overcast sky)
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGradient.addColorStop(0, '#2a2a2e');
+            skyGradient.addColorStop(0.5, '#3a3a40');
+            skyGradient.addColorStop(1, '#4a4a50');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Ground (war-torn terrain)
+            const groundGradient = ctx.createLinearGradient(0, canvas.height/2, 0, canvas.height);
+            groundGradient.addColorStop(0, '#3a3a35');
+            groundGradient.addColorStop(1, '#2a2a25');
+            ctx.fillStyle = groundGradient;
+            ctx.fillRect(0, canvas.height/2, canvas.width, canvas.height/2);
+            
+            // Render buildings
+            gameState.buildings.forEach(building => {
+                const relX = building.x - player.x;
+                const relZ = building.z - player.z;
+                
+                // Rotate relative to player view
+                const rotX = relX * Math.cos(player.yaw) - relZ * Math.sin(player.yaw);
+                const rotZ = relX * Math.sin(player.yaw) + relZ * Math.cos(player.yaw);
+                
+                if (rotZ <= 0.5) return;
+                
+                const screenX = canvas.width/2 + perspectiveX(rotX, rotZ);
+                const screenY = canvas.height/2 + perspectiveY(player.y - building.height/2, rotZ);
+                const screenWidth = perspectiveX(building.width/2, rotZ) * 2;
+                const screenHeight = perspectiveY(-building.height, rotZ);
+                
+                // Building color based on damage
+                const damageFactor = building.damage;
+                const r = Math.floor(60 - damageFactor * 30);
+                const g = Math.floor(60 - damageFactor * 40);
+                const b = Math.floor(65 - damageFactor * 40);
+                
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(screenX - screenWidth/2, screenY, screenWidth, screenHeight);
+                
+                // Windows
+                const windowRows = Math.floor(building.height / 4);
+                const windowCols = Math.floor(building.width / 3);
+                
+                for (let row = 0; row < windowRows; row++) {
+                    for (let col = 0; col < windowCols; col++) {
+                        if (Math.random() > building.damage * 0.7) {
+                            const wx = screenX - screenWidth/2 + (col + 0.5) * (screenWidth / windowCols);
+                            const wy = screenY + (row + 0.5) * (screenHeight / windowRows);
+                            const ww = screenWidth / windowCols * 0.6;
+                            const wh = screenHeight / windowRows * 0.4;
+                            
+                            // Some windows lit, some dark
+                            if (Math.random() > 0.7) {
+                                ctx.fillStyle = '#4a3a2a';
+                            } else {
+                                ctx.fillStyle = '#1a1a1a';
+                            }
+                            ctx.fillRect(wx, wy, ww, wh);
+                        }
+                    }
+                }
+                
+                // Fire effect
+                if (building.hasFire) {
+                    const fireX = screenX - screenWidth/4;
+                    const fireY = screenY + screenHeight * 0.8;
+                    const fireSize = screenWidth * 0.3;
+                    
+                    ctx.fillStyle = `rgba(255, ${Math.floor(100 + Math.random() * 100)}, 0, 0.8)`;
+                    ctx.beginPath();
+                    ctx.arc(fireX, fireY, fireSize * (0.8 + Math.random() * 0.4), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Smoke
+                if (building.smoke) {
+                    const smokeX = screenX;
+                    const smokeY = screenY;
+                    const smokeSize = screenWidth * 0.5;
+                    
+                    ctx.fillStyle = `rgba(50, 50, 50, 0.3)`;
+                    ctx.beginPath();
+                    ctx.arc(smokeX, smokeY - smokeSize, smokeSize * (1 + Math.random() * 0.5), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            
+            // Render debris
+            gameState.debris.forEach(debris => {
+                const relX = debris.x - player.x;
+                const relZ = debris.z - player.z;
+                
+                const rotX = relX * Math.cos(player.yaw) - relZ * Math.sin(player.yaw);
+                const rotZ = relX * Math.sin(player.yaw) + relZ * Math.cos(player.yaw);
+                
+                if (rotZ <= 0.5) return;
+                
+                const screenX = canvas.width/2 + perspectiveX(rotX, rotZ);
+                const screenY = canvas.height/2 + perspectiveY(player.y - 0.5, rotZ);
+                const screenSize = perspectiveX(debris.size, rotZ);
+                
+                ctx.fillStyle = debris.type === 'rubble' ? '#4a4a45' : '#5a5a50';
+                ctx.save();
+                ctx.translate(screenX, screenY);
+                ctx.rotate(debris.rotation);
+                ctx.fillRect(-screenSize/2, -screenSize/2, screenSize, screenSize);
+                ctx.restore();
+            });
+            
+            // Render enemies
+            gameState.enemies.forEach(enemy => {
+                const relX = enemy.x - player.x;
+                const relZ = enemy.z - player.z;
+                
+                const rotX = relX * Math.cos(player.yaw) - relZ * Math.sin(player.yaw);
+                const rotZ = relX * Math.sin(player.yaw) + relZ * Math.cos(player.yaw);
+                
+                if (rotZ <= 0.5) return;
+                
+                const screenX = canvas.width/2 + perspectiveX(rotX, rotZ);
+                const screenY = canvas.height/2 + perspectiveY(player.y - enemy.y, rotZ);
+                const enemyHeight = perspectiveY(-1.7, rotZ);
+                const enemyWidth = enemyHeight * 0.4;
+                
+                // Enemy color based on uniform
+                const uniforms = ['#4a5a3a', '#5a4a3a', '#3a4a5a'];
+                const uniform = uniforms[enemy.uniform];
+                
+                // Hit flash
+                if (enemy.isHit && Date.now() - enemy.hitTime < 100) {
+                    ctx.fillStyle = '#ff0000';
+                } else {
+                    ctx.fillStyle = uniform;
+                }
+                
+                // Body
+                ctx.fillRect(screenX - enemyWidth/2, screenY - enemyHeight, enemyWidth, enemyHeight);
+                
+                // Head
+                const headSize = enemyWidth * 0.5;
+                ctx.fillStyle = '#8a7a6a';
+                ctx.fillRect(screenX - headSize/2, screenY - enemyHeight - headSize, headSize, headSize);
+                
+                // Health bar above enemy
+                const healthBarWidth = enemyWidth * 1.2;
+                const healthBarHeight = 4;
+                const healthPercent = enemy.health / (CONFIG.enemyHealth + gameState.wave * 10);
+                
+                ctx.fillStyle = '#3a0a0a';
+                ctx.fillRect(screenX - healthBarWidth/2, screenY - enemyHeight - headSize - 10, healthBarWidth, healthBarHeight);
+                ctx.fillStyle = '#aa0a0a';
+                ctx.fillRect(screenX - healthBarWidth/2, screenY - enemyHeight - headSize - 10, healthBarWidth * healthPercent, healthBarHeight);
+            });
+            
+            // Render particles
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const p = gameState.particles[i];
+                const relX = p.x - player.x;
+                const relZ = p.z - player.z;
+                
+                const rotX = relX * Math.cos(player.yaw) - relZ * Math.sin(player.yaw);
+                const rotZ = relX * Math.sin(player.yaw) + relZ * Math.cos(player.yaw);
+                
+                if (rotZ <= 0.5) {
+                    p.life = 0;
+                    continue;
+                }
+                
+                const screenX = canvas.width/2 + perspectiveX(rotX, rotZ);
+                const screenY = canvas.height/2 + perspectiveY(player.y - p.y, rotZ);
+                const screenSize = perspectiveX(p.size * p.life, rotZ);
+                
+                if (p.type === 'blood' || p.type === 'gore') {
+                    ctx.fillStyle = `rgba(139, 0, 0, ${p.life})`;
+                } else {
+                    ctx.fillStyle = `rgba(100, 100, 100, ${p.life})`;
+                }
+                
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, screenSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Update particle
+                p.x += p.vx * 0.016;
+                p.y += p.vy * 0.016;
+                p.z += p.vz * 0.016;
+                p.vy -= 0.5 * 0.016;
+                p.life -= p.decay;
+                
+                if (p.life <= 0) {
+                    gameState.particles.splice(i, 1);
+                }
+            }
+            
+            // Muzzle flash
+            if (muzzleFlash.active && Date.now() - muzzleFlash.time < 50) {
+                const flashSize = 100 + Math.random() * 50;
+                const gradient = ctx.createRadialGradient(
+                    canvas.width/2, canvas.height/2, 0,
+                    canvas.width/2, canvas.height/2, flashSize
+                );
+                gradient.addColorStop(0, 'rgba(255, 200, 50, 0.9)');
+                gradient.addColorStop(0.5, 'rgba(255, 100, 0, 0.5)');
+                gradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                if (Date.now() - muzzleFlash.time > 50) {
+                    muzzleFlash.active = false;
+                }
+            }
+            
+            // Weapon (simple realistic rifle silhouette)
+            const weaponBob = Math.sin(Date.now() / 100) * (player.isSprinting ? 8 : 3) * (keys['KeyW'] || keys['KeyS'] ? 1 : 0.3);
+            const weaponX = canvas.width * 0.65;
+            const weaponY = canvas.height * 0.75 + weaponBob;
+            
+            // Rifle body
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(weaponX, weaponY, 200, 20);
+            ctx.fillRect(weaponX + 180, weaponY - 30, 40, 50);
+            
+            // Barrel
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(weaponX - 60, weaponY + 5, 70, 10);
+            
+            // Scope
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(weaponX + 80, weaponY - 15, 60, 15);
+            
+            // Magazine
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(weaponX + 100, weaponY + 20, 30, 50);
+            
+            // Handguard
+            ctx.fillStyle = '#3a3530';
+            ctx.fillRect(weaponX + 20, weaponY + 8, 100, 12);
+        }
+
+        // Render minimap
+        function renderMinimap() {
+            minimapCtx.fillStyle = '#1a1a1a';
+            minimapCtx.fillRect(0, 0, 150, 150);
+            
+            const centerX = 75;
+            const centerY = 75;
+            const scale = 1.5;
+            
+            // Draw buildings
+            gameState.buildings.forEach(building => {
+                const relX = (building.x - player.x) * scale;
+                const relZ = (building.z - player.z) * scale;
+                
+                // Rotate based on player yaw
+                const rotX = relX * Math.cos(-player.yaw) - relZ * Math.sin(-player.yaw);
+                const rotZ = relX * Math.sin(-player.yaw) + relZ * Math.cos(-player.yaw);
+                
+                const screenX = centerX + rotX;
+                const screenZ = centerY + rotZ;
+                
+                minimapCtx.fillStyle = '#4a4a4a';
+                minimapCtx.fillRect(
+                    screenX - building.width * scale / 4,
+                    screenZ - building.depth * scale / 4,
+                    building.width * scale / 2,
+                    building.depth * scale / 2
+                );
+            });
+            
+            // Draw enemies
+            gameState.enemies.forEach(enemy => {
+                const relX = (enemy.x - player.x) * scale;
+                const relZ = (enemy.z - player.z) * scale;
+                
+                const rotX = relX * Math.cos(-player.yaw) - relZ * Math.sin(-player.yaw);
+                const rotZ = relX * Math.sin(-player.yaw) + relZ * Math.cos(-player.yaw);
+                
+                const screenX = centerX + rotX;
+                const screenZ = centerY + rotZ;
+                
+                if (screenX > 0 && screenX < 150 && screenZ > 0 && screenZ < 150) {
+                    minimapCtx.fillStyle = '#ff0000';
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(screenX, screenZ, 3, 0, Math.PI * 2);
+                    minimapCtx.fill();
+                }
+            });
+            
+            // Draw player
+            minimapCtx.fillStyle = '#00ff00';
+            minimapCtx.beginPath();
+            minimapCtx.moveTo(centerX, centerY - 5);
+            minimapCtx.lineTo(centerX - 4, centerY + 4);
+            minimapCtx.lineTo(centerX + 4, centerY + 4);
+            minimapCtx.closePath();
+            minimapCtx.fill();
+        }
+
+        // Update game logic
+        function update(deltaTime) {
+            if (!gameState.isPlaying) return;
+            
+            // Player movement
+            let speed = CONFIG.playerSpeed;
+            if (player.isSprinting) speed *= CONFIG.sprintMultiplier;
+            if (player.isCrouching) speed *= CONFIG.crouchMultiplier;
+            
+            const moveX = Math.sin(player.yaw) * speed;
+            const moveZ = Math.cos(player.yaw) * speed;
+            
+            if (keys['KeyW']) {
+                player.x += moveX * deltaTime;
+                player.z += moveZ * deltaTime;
+            }
+            if (keys['KeyS']) {
+                player.x -= moveX * deltaTime;
+                player.z -= moveZ * deltaTime;
+            }
+            if (keys['KeyA']) {
+                player.x += Math.cos(player.yaw) * speed * deltaTime;
+                player.z -= Math.sin(player.yaw) * speed * deltaTime;
+            }
+            if (keys['KeyD']) {
+                player.x -= Math.cos(player.yaw) * speed * deltaTime;
+                player.z += Math.sin(player.yaw) * speed * deltaTime;
+            }
+            
+            // Crouch height adjustment
+            const targetHeight = player.isCrouching ? 1.0 : 1.7;
+            player.y += (targetHeight - player.y) * 0.1;
+            
+            // Update enemies
+            gameState.enemies.forEach(enemy => {
+                const dx = player.x - enemy.x;
+                const dz = player.z - enemy.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                
+                if (dist > 2) {
+                    enemy.x += (dx / dist) * enemy.speed * deltaTime;
+                    enemy.z += (dz / dist) * enemy.speed * deltaTime;
+                } else {
+                    // Attack player
+                    if (Date.now() - enemy.lastAttack > 1000) {
+                        enemy.lastAttack = Date.now();
+                        gameState.health -= CONFIG.enemyDamage;
+                        updateHUD();
+                        
+                        if (gameState.health <= 0) {
+                            gameOver();
+                        }
+                    }
+                }
+            });
+            
+            // Spawn new enemies periodically
+            if (gameState.enemies.length < 3 + gameState.wave && Math.random() < 0.01) {
+                spawnEnemy();
+            }
+        }
+
+        // Game Over
+        function gameOver() {
+            gameState.isPlaying = false;
+            document.exitPointerLock();
+            document.getElementById('death-screen').style.display = 'flex';
+            document.getElementById('final-kills').textContent = gameState.kills;
+            document.getElementById('final-waves').textContent = gameState.wave;
+        }
+
+        // Reset game
+        function resetGame() {
+            gameState = {
+                isPlaying: false,
+                health: CONFIG.maxHealth,
+                ammo: 30,
+                reserveAmmo: 90,
+                kills: 0,
+                wave: 1,
+                isReloading: false,
+                lastFireTime: 0,
+                enemies: [],
+                bullets: [],
+                particles: [],
+                buildings: [],
+                debris: []
+            };
+            
+            player = {
+                x: 0,
+                y: 1.7,
+                z: 0,
+                vx: 0,
+                vy: 0,
+                vz: 0,
+                yaw: 0,
+                pitch: 0,
+                isCrouching: false,
+                isSprinting: false,
+                nightVision: false
+            };
+            
+            generateEnvironment();
+            updateHUD();
+        }
+
+        // Start game
+        function startGame() {
+            resetGame();
+            gameState.isPlaying = true;
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('death-screen').style.display = 'none';
+            canvas.requestPointerLock();
+            spawnWave();
+        }
+
+        // Event Listeners
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('restart-btn').addEventListener('click', startGame);
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            
+            if (e.code === 'KeyR') reload();
+            if (e.code === 'ShiftLeft') player.isSprinting = true;
+            if (e.code === 'ControlLeft') player.isCrouching = true;
+            if (e.code === 'KeyV') {
+                player.nightVision = !player.nightVision;
+                document.getElementById('night-vision').style.display = player.nightVision ? 'block' : 'none';
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+            
+            if (e.code === 'ShiftLeft') player.isSprinting = false;
+            if (e.code === 'ControlLeft') player.isCrouching = false;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isPointerLocked || !gameState.isPlaying) return;
+            
+            player.yaw += e.movementX * CONFIG.mouseSensitivity;
+            player.pitch += e.movementY * CONFIG.mouseSensitivity;
+            player.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, player.pitch));
+        });
+
+        document.addEventListener('mousedown', (e) => {
+            if (!gameState.isPlaying) return;
+            if (e.button === 0) shoot();
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            isPointerLocked = document.pointerLockElement === canvas;
+        });
+
+        // Game Loop
+        let lastTime = Date.now();
+        function gameLoop() {
+            const now = Date.now();
+            const deltaTime = (now - lastTime) / 1000;
+            lastTime = now;
+            
+            update(deltaTime);
+            render();
+            renderMinimap();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize
+        generateEnvironment();
+        gameLoop();
+    </script>
+</body>
+</html>
