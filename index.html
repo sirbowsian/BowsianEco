@@ -3,230 +3,888 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Talladega Raceway - NASCAR Racing Game</title>
+    <title>Talladega Raceway - NASCAR Simulator</title>
     <style>
-        * {
+        body {
             margin: 0;
-            padding: 0;
+            overflow: hidden;
+            background: #1a1a1a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
             box-sizing: border-box;
         }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            overflow: hidden;
-            color: white;
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
         }
-        
-        #gameContainer {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
-        
-        #gameCanvas {
-            display: block;
-            background: #2d5a27;
-        }
-        
-        #hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
+        .stat-box {
             background: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 10px;
-            border: 2px solid #ff4444;
-            min-width: 250px;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ff3e3e;
+            min-width: 150px;
         }
-        
-        .hud-item {
-            margin: 10px 0;
-            font-size: 18px;
-        }
-        
-        .hud-label {
+        .stat-label {
+            font-size: 12px;
             color: #aaa;
-            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        
-        .hud-value {
+        .stat-value {
             font-size: 24px;
             font-weight: bold;
-            color: #fff;
+            font-family: monospace;
         }
-        
-        #speedometer {
+        .gauge-container {
+            position: relative;
+            width: 300px;
+            height: 150px;
+            background: rgba(0,0,0,0.8);
+            border-radius: 150px 150px 0 0;
+            margin: 0 auto;
+            overflow: hidden;
+            border: 2px solid #333;
+        }
+        .gauge-bg {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 50%;
-            width: 200px;
-            height: 200px;
-            border: 3px solid #ff4444;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: conic-gradient(from 270deg, #333 0deg, #333 180deg);
+            border-radius: 150px 150px 0 0;
         }
-        
-        #speedValue {
+        .gauge-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: conic-gradient(from 270deg, #00ff00 0%, #ffff00 60%, #ff0000 90%, #ff0000 100%);
+            border-radius: 150px 150px 0 0;
+            transform: rotate(-180deg);
+            transition: transform 0.1s;
+            opacity: 0.8;
+        }
+        .gauge-needle {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            height: 130px;
+            background: red;
+            transform-origin: bottom center;
+            transform: rotate(-90deg);
+            transition: transform 0.1s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+            z-index: 10;
+        }
+        .gauge-center {
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 20px;
+            background: #1a1a1a;
+            border-radius: 20px 20px 0 0;
+            z-index: 11;
+        }
+        .digital-readout {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-family: monospace;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            z-index: 12;
+        }
+        .gear-display {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             font-size: 48px;
             font-weight: bold;
-            color: #fff;
+            color: white;
+            z-index: 12;
+            text-shadow: 0 0 10px black;
         }
-        
-        #speedLabel {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 14px;
-            color: #aaa;
+        .tire-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
         }
-        
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 14px;
-        }
-        
-        .control-key {
-            display: inline-block;
+        .tire {
             background: #333;
-            padding: 5px 10px;
-            border-radius: 5px;
-            margin: 2px;
+            padding: 5px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .tire-bar {
+            height: 4px;
+            background: #555;
+            margin-top: 2px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .tire-fill {
+            height: 100%;
+            background: #00ff00;
+            width: 100%;
+            transition: width 0.5s, background 0.5s;
+        }
+        .weight-transfer {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            background: rgba(0,0,0,0.5);
             border: 1px solid #555;
+            margin: 10px auto;
         }
-        
-        #lapInfo {
+        .weight-dot {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 10px;
-            border: 2px solid #44ff44;
-            text-align: right;
-        }
-        
-        #message {
-            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: yellow;
+            border-radius: 50%;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 40px;
-            border-radius: 15px;
-            border: 3px solid #ff4444;
-            text-align: center;
-            display: none;
+            transition: top 0.1s, left 0.1s;
+        }
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             z-index: 100;
+            pointer-events: auto;
         }
-        
-        #message h2 {
-            font-size: 36px;
-            margin-bottom: 20px;
-            color: #ff4444;
+        h1 {
+            font-size: 48px;
+            color: #ff3e3e;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 62, 62, 0.5);
         }
-        
-        #message p {
-            font-size: 18px;
-            margin: 10px 0;
+        button {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: #ff3e3e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: transform 0.2s;
         }
-        
-        .tire-indicator {
+        button:hover {
+            transform: scale(1.05);
+            background: #ff5e5e;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .controls-hint {
+            margin-top: 20px;
+            color: #aaa;
+            font-size: 14px;
+            text-align: center;
+        }
+        .key {
             display: inline-block;
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            margin: 2px;
+            padding: 4px 8px;
+            background: #333;
+            border-radius: 4px;
+            border: 1px solid #555;
+            margin: 0 2px;
         }
-        
-        .tire-good { background: #44ff44; }
-        .tire-worn { background: #ffff44; }
-        .tire-bad { background: #ff4444; }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas"></canvas>
-        
-        <div id="hud">
-            <div class="hud-item">
-                <div class="hud-label">GEAR</div>
-                <div class="hud-value" id="gearValue">1</div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div class="hud-top">
+            <div class="stat-box">
+                <div class="stat-label">Position</div>
+                <div class="stat-value" id="pos-display">1 / 8</div>
+                <div class="stat-label" style="margin-top:10px;">Lap</div>
+                <div class="stat-value" id="lap-display">1 / 3</div>
+                <div class="stat-label" style="margin-top:10px;">Time</div>
+                <div class="stat-value" id="time-display">00:00.00</div>
             </div>
-            <div class="hud-item">
-                <div class="hud-label">RPM</div>
-                <div class="hud-value" id="rpmValue">0</div>
-            </div>
-            <div class="hud-item">
-                <div class="hud-label">FUEL</div>
-                <div class="hud-value" id="fuelValue">100%</div>
-            </div>
-            <div class="hud-item">
-                <div class="hud-label">TIRE WEAR</div>
-                <div id="tireStatus">
-                    <span class="tire-indicator tire-good" id="tireFL"></span>
-                    <span class="tire-indicator tire-good" id="tireFR"></span>
-                    <span class="tire-indicator tire-good" id="tireRL"></span>
-                    <span class="tire-indicator tire-good" id="tireRR"></span>
+            
+            <div class="stat-box" style="text-align: right;">
+                <div class="stat-label">Fuel</div>
+                <div class="stat-value" id="fuel-display">100%</div>
+                <div class="stat-label" style="margin-top:10px;">Tires</div>
+                <div class="tire-grid">
+                    <div class="tire">FL<div class="tire-bar"><div class="tire-fill" id="tire-fl"></div></div></div>
+                    <div class="tire">FR<div class="tire-bar"><div class="tire-fill" id="tire-fr"></div></div></div>
+                    <div class="tire">RL<div class="tire-bar"><div class="tire-fill" id="tire-rl"></div></div></div>
+                    <div class="tire">RR<div class="tire-bar"><div class="tire-fill" id="tire-rr"></div></div></div>
                 </div>
             </div>
-            <div class="hud-item">
-                <div class="hud-label">WEIGHT TRANSFER</div>
-                <div class="hud-value" id="weightTransfer">0%</div>
-            </div>
         </div>
-        
-        <div id="lapInfo">
-            <div class="hud-item">
-                <div class="hud-label">LAP</div>
-                <div class="hud-value" id="lapValue">1/3</div>
+
+        <div style="flex-grow: 1;"></div>
+
+        <div class="hud-bottom" style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div class="stat-box">
+                <div class="stat-label">Weight Transfer</div>
+                <div class="weight-transfer">
+                    <div class="weight-dot" id="weight-dot"></div>
+                </div>
+                <div class="stat-label" style="text-align: center; font-size: 10px;">G-Force Vector</div>
             </div>
-            <div class="hud-item">
-                <div class="hud-label">POSITION</div>
-                <div class="hud-value" id="positionValue">1/20</div>
+
+            <div class="gauge-container">
+                <div class="gauge-bg"></div>
+                <div class="gauge-fill" id="rpm-fill"></div>
+                <div class="gauge-needle" id="rpm-needle"></div>
+                <div class="gauge-center"></div>
+                <div class="gear-display" id="gear-display">N</div>
+                <div class="digital-readout"><span id="speed-display">0</span> <span style="font-size:16px">MPH</span></div>
             </div>
-            <div class="hud-item">
-                <div class="hud-label">BEST LAP</div>
-                <div class="hud-value" id="bestLapValue">--:--.--</div>
+
+            <div class="stat-box" style="min-width: 200px;">
+                <div class="stat-label">Telemetry</div>
+                <div style="font-family: monospace; font-size: 14px; line-height: 1.6;">
+                    RPM: <span id="tel-rpm">0</span><br>
+                    Slip: <span id="tel-slip">0</span>%<br>
+                    Grip: <span id="tel-grip">100</span>%<br>
+                    Bank: <span id="tel-bank">0</span>°
+                </div>
             </div>
-            <div class="hud-item">
-                <div class="hud-label">CURRENT LAP</div>
-                <div class="hud-value" id="currentLapValue">--:--.--</div>
-            </div>
-        </div>
-        
-        <div id="speedometer">
-            <div id="speedValue">0</div>
-            <div id="speedLabel">MPH</div>
-        </div>
-        
-        <div id="controls">
-            <div><span class="control-key">W</span> / <span class="control-key">↑</span> Accelerate</div>
-            <div><span class="control-key">S</span> / <span class="control-key">↓</span> Brake</div>
-            <div><span class="control-key">A</span> / <span class="control-key">←</span> Steer Left</div>
-            <div><span class="control-key">D</span> / <span class="control-key">→</span> Steer Right</div>
-            <div><span class="control-key">SPACE</span> Handbrake</div>
-            <div><span class="control-key">R</span> Reset Car</div>
-        </div>
-        
-        <div id="message">
-            <h2 id="messageTitle">TALLADEGA RACEWAY</h2>
-            <p id="messageText">NASCAR Racing Experience</p>
-            <p style="margin-top: 20px; color: #aaa;">Press SPACE to start</p>
         </div>
     </div>
 
-    <script src="game.js"></script>
+    <div id="start-screen">
+        <h1>Talladega Raceway</h1>
+        <p style="font-size: 20px; margin-bottom: 30px; color: #ccc;">Realistic NASCAR Physics Simulation</p>
+        <button onclick="startGame()">Start Race</button>
+        <div class="controls-hint">
+            Controls: <span class="key">↑</span> Gas &nbsp; <span class="key">↓</span> Brake &nbsp; <span class="key">←</span> <span class="key">→</span> Steer
+        </div>
+    </div>
+
+    <div id="game-over-screen" class="hidden">
+        <h1 id="end-title">Race Finished</h1>
+        <p id="end-result" style="font-size: 24px; margin-bottom: 20px;">Position: 1st</p>
+        <button onclick="location.reload()">Race Again</button>
+    </div>
+
+<script>
+/**
+ * TALLADEGA RACEWAY - PHYSICS ENGINE
+ * Features: Realistic weight, inertia, slip angles, aerodynamics, tire wear
+ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Resize handling
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Game Constants
+const TRACK_LENGTH = 4000; // Abstract units
+const TRACK_WIDTH = 300;
+const LAP_COUNT = 3;
+const TOTAL_CARS = 8;
+
+// Physics Constants (NASCAR Specific)
+const CAR_MASS = 1542; // kg (3400 lbs)
+const ENGINE_POWER = 560000; // Watts (~750 HP)
+const DRAG_COEFF = 0.35;
+const DOWNFORCE_COEFF = 0.002;
+const FRICTION_ROLLING = 0.015;
+const MAX_STEER_ANGLE = 0.35; // Radians (~20 degrees)
+const STEER_SPEED = 0.08;
+const BRAKE_FORCE = 12000;
+const CENTER_OF_GRAVITY = 0.48; // 48% front bias
+
+class Car {
+    constructor(isPlayer, startX, startAngle, color, number) {
+        this.isPlayer = isPlayer;
+        this.x = startX;
+        this.y = startAngle; // In oval context, Y is angle around track
+        this.angle = startAngle; // Heading
+        this.speed = 0;
+        this.maxSpeed = 95 + (Math.random() * 5); // m/s (~210-220 mph)
+        
+        // Dynamics
+        this.velocity = { x: 0, y: 0 };
+        this.steerAngle = 0;
+        this.rpm = 1000;
+        this.gear = 1;
+        this.fuel = 100;
+        
+        // Tires [FL, FR, RL, RR] - 1.0 = new, 0.0 = bald
+        this.tires = [1.0, 1.0, 1.0, 1.0];
+        this.temp = [20, 20, 20, 20];
+        
+        // State
+        this.lap = 1;
+        this.distance = 0;
+        this.finished = false;
+        this.finishTime = 0;
+        
+        // Visuals
+        this.color = color;
+        this.number = number;
+        this.slipAngle = 0;
+        
+        // AI
+        this.aiOffset = (Math.random() - 0.5) * (TRACK_WIDTH * 0.6);
+        this.aiAggression = 0.8 + Math.random() * 0.2;
+    }
+
+    update(dt, input) {
+        if (this.finished) {
+            this.speed *= 0.98; // Slow down after finish
+            return;
+        }
+
+        // 1. Input Handling
+        let throttle = 0;
+        let brake = 0;
+        let steerInput = 0;
+
+        if (this.isPlayer) {
+            if (input.up) throttle = 1;
+            if (input.down) brake = 1;
+            if (input.left) steerInput = -1;
+            if (input.right) steerInput = 1;
+        } else {
+            // AI Logic
+            this.updateAI(dt);
+            throttle = this.aiThrottle;
+            brake = this.aiBrake;
+            steerInput = this.aiSteer;
+        }
+
+        // 2. Steering Physics (Speed sensitive + Return to center)
+        const speedFactor = Math.max(0.2, 1 - (Math.abs(this.speed) / 80));
+        const targetSteer = steerInput * MAX_STEER_ANGLE * speedFactor;
+        
+        // Smooth steering movement
+        if (this.steerAngle < targetSteer) {
+            this.steerAngle = Math.min(targetSteer, this.steerAngle + STEER_SPEED);
+        } else {
+            this.steerAngle = Math.max(targetSteer, this.steerAngle - STEER_SPEED);
+        }
+
+        // Natural return to center if no input
+        if (steerInput === 0) {
+            this.steerAngle *= 0.9;
+        }
+
+        // 3. Engine & Transmission
+        if (throttle > 0 && this.fuel > 0) {
+            // Simple automatic transmission logic
+            const shiftPoints = [40, 70, 100, 140, 190]; // MPH approx
+            const speedMph = this.speed * 2.23694;
+            
+            if (this.gear < 5 && speedMph > shiftPoints[this.gear-1]) {
+                this.gear++;
+                this.rpm -= 2000;
+            } else if (this.gear > 1 && speedMph < shiftPoints[this.gear-2] * 0.8) {
+                this.gear--;
+                this.rpm += 2000;
+            }
+
+            // RPM Calculation based on speed and gear
+            const gearRatio = [3.5, 2.5, 1.8, 1.4, 1.0][this.gear-1];
+            const targetRpm = Math.min(9500, 1000 + (speedMph * 40 / gearRatio));
+            this.rpm = targetRpm + (throttle * 1500 * Math.sin(Date.now()/100)); // Idle jitter
+            
+            // Force application
+            const currentPower = ENGINE_POWER * (this.rpm / 9000) * throttle;
+            const force = currentPower / (this.speed + 1); // F = P/v
+            this.speed += (force / CAR_MASS) * dt;
+            
+            // Fuel consumption
+            this.fuel -= 0.005 * throttle * dt;
+        } else {
+            // Engine braking / Idle
+            this.rpm = Math.max(1000, this.rpm - 500 * dt);
+            if (this.speed > 0) this.gear = 1;
+        }
+
+        // Braking
+        if (brake) {
+            this.speed -= (BRAKE_FORCE / CAR_MASS) * dt;
+            // Brake heat/tire wear
+            this.tires[0] -= 0.0001 * dt;
+            this.tires[1] -= 0.0001 * dt;
+        }
+
+        // Drag & Rolling Resistance
+        const drag = 0.5 * 1.225 * (this.speed * this.speed) * DRAG_COEFF * 2.0;
+        const rolling = CAR_MASS * 9.81 * FRICTION_ROLLING;
+        this.speed -= ((drag + rolling) / CAR_MASS) * dt;
+
+        // Cap speed
+        if (this.speed < 0) this.speed = 0;
+        if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
+
+        // 4. Cornering Physics (Slip Angle & Weight Transfer)
+        // Calculate lateral force capability based on tire wear and speed
+        const avgTireHealth = (this.tires[0] + this.tires[1] + this.tires[2] + this.tires[3]) / 4;
+        const gripLevel = 0.6 + (avgTireHealth * 0.4); // Base grip + tire bonus
+        
+        // Centrifugal force simulation
+        // The faster we go, the harder it is to turn (understeer)
+        const lateralG = (this.speed * this.speed) * Math.sin(Math.abs(this.steerAngle)) * 0.005;
+        
+        // Slip angle: difference between where car points and where it goes
+        this.slipAngle = this.steerAngle * (1 - (this.speed / 120) * (1-gripLevel));
+        
+        // Apply rotation
+        const turnRate = (this.speed * Math.tan(this.slipAngle)) / 2.5; // Wheelbase factor
+        this.angle += turnRate * dt;
+
+        // 5. Movement Integration
+        // Convert polar coordinates (track angle) to cartesian for rendering
+        // But internally we track distance along the track spline
+        
+        // Simplified Oval Physics:
+        // We move along a predefined path, but X/Y deviation represents leaving the racing line
+        
+        const moveStep = this.speed * dt;
+        this.distance += moveStep;
+        
+        // Calculate Track Position (Oval: 2 straights, 2 turns)
+        // Normalized position 0.0 to 1.0
+        const normPos = (this.distance % TRACK_LENGTH) / TRACK_LENGTH;
+        
+        // Lap counting
+        const prevLapDist = (this.lap - 1) * TRACK_LENGTH;
+        if (this.distance >= this.lap * TRACK_LENGTH && this.lap <= LAP_COUNT) {
+            this.lap++;
+            if (this.lap > LAP_COUNT) {
+                this.finished = true;
+                this.finishTime = Date.now() - startTime;
+                checkRaceEnd();
+            }
+        }
+
+        // Determine X,Y based on track geometry (Super Speedway Oval)
+        // Straight 1: Bottom, Turn 1: Right, Straight 2: Top, Turn 2: Left
+        const trackW = 800;
+        const trackH = 500;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        let tx, ty, trackAngle;
+        
+        if (normPos < 0.25) {
+            // Back Straight
+            const t = normPos * 4;
+            tx = centerX - trackW/2 + (trackW * t);
+            ty = centerY + trackH/2;
+            trackAngle = 0;
+        } else if (normPos < 0.5) {
+            // Turn 1 & Front Straight start
+            const t = (normPos - 0.25) * 4;
+            const angle = Math.PI * t; // 0 to PI
+            tx = centerX + trackW/2 * Math.cos(angle);
+            ty = centerY + trackH/2 * Math.sin(angle);
+            trackAngle = Math.PI / 2 + angle;
+        } else if (normPos < 0.75) {
+            // Front Straight
+            const t = (normPos - 0.5) * 4;
+            tx = centerX + trackW/2 - (trackW * t);
+            ty = centerY - trackH/2;
+            trackAngle = Math.PI;
+        } else {
+            // Turn 2
+            const t = (normPos - 0.75) * 4;
+            const angle = Math.PI + (Math.PI * t);
+            tx = centerX - trackW/2 * Math.cos(angle);
+            ty = centerY - trackH/2 * Math.sin(angle);
+            trackAngle = -Math.PI / 2 + angle;
+        }
+
+        // Apply "Off-line" movement based on steering input vs centrifugal force
+        // If steering into turn, we stay on line. If we drift, we move outward.
+        const drift = (Math.abs(this.slipAngle) - Math.abs(this.steerAngle)) * this.speed * 2;
+        
+        // Perpendicular offset
+        const perpX = -Math.sin(trackAngle);
+        const perpY = Math.cos(trackAngle);
+        
+        // AI tries to stay close to optimal line, Player has more freedom
+        let targetOffset = this.aiOffset;
+        if (this.isPlayer) {
+            // Player control over lateral position is limited by physics
+            targetOffset += (this.steerAngle * 50) + (drift * 10);
+        } else {
+            // AI smooths out offset
+            this.aiOffset += (targetOffset - this.aiOffset) * 0.05;
+        }
+
+        this.renderX = tx + (perpX * targetOffset);
+        this.renderY = ty + (perpY * targetOffset);
+        
+        // Tire Wear Logic
+        if (this.speed > 40) {
+            const wearFactor = (Math.abs(this.steerAngle) * this.speed) / 50000;
+            const slipWear = (Math.abs(this.slipAngle) * this.speed) / 20000;
+            
+            // Outer tires wear more in turns
+            if (normPos > 0.25 && normPos < 0.5) {
+                this.tires[1] -= (wearFactor + slipWear) * dt; // RF
+                this.tires[3] -= (wearFactor + slipWear) * dt; // RR
+            } else if (normPos > 0.75) {
+                this.tires[0] -= (wearFactor + slipWear) * dt; // LF
+                this.tires[2] -= (wearFactor + slipWear) * dt; // LR
+            } else {
+                // Straights
+                this.tires.forEach((t, i) => this.tires[i] -= wearFactor * 0.2 * dt);
+            }
+            
+            // Clamp tire health
+            this.tires = this.tires.map(t => Math.max(0.1, t));
+        }
+    }
+
+    updateAI(dt) {
+        // Simple AI: Follow ideal line, brake if too fast for corner
+        const normPos = (this.distance % TRACK_LENGTH) / TRACK_LENGTH;
+        const inTurn = (normPos > 0.2 && normPos < 0.5) || (normPos > 0.7 && normPos < 0.95);
+        
+        this.aiThrottle = this.aiAggression;
+        this.aiBrake = 0;
+        this.aiSteer = 0;
+
+        if (inTurn) {
+            // Determine turn direction
+            const turnDir = (normPos > 0.2 && normPos < 0.5) ? 1 : -1;
+            
+            // Ideal speed for cornering
+            const idealSpeed = 65 * this.aiAggression; 
+            if (this.speed > idealSpeed) {
+                this.aiBrake = 0.5;
+                this.aiThrottle = 0;
+            }
+            
+            // Steering with lookahead
+            this.aiSteer = turnDir * 0.8;
+        } else {
+            // Straights
+            this.aiSteer = 0;
+            // Avoid collisions (simple raycast fake)
+            // Check for cars ahead
+            for (let other of cars) {
+                if (other !== this && !other.finished) {
+                    const dist = Math.hypot(other.renderX - this.renderX, other.renderY - this.renderY);
+                    if (dist < 60) {
+                        // Brake or steer away
+                        if (this.aiOffset * turnDir < 0) {
+                             this.aiOffset += 2 * dt; // Move out
+                        } else {
+                            this.aiBrake = 0.8;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.renderX, this.renderY);
+        ctx.rotate(this.angle);
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(-22, -10, 44, 20);
+
+        // Body
+        ctx.fillStyle = this.color;
+        // NASCAR Shape (simplified)
+        ctx.beginPath();
+        ctx.roundRect(-20, -9, 40, 18, 4);
+        ctx.fill();
+
+        // Roof / Windshield
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.moveTo(-5, -8);
+        ctx.lineTo(5, -8);
+        ctx.lineTo(8, 0);
+        ctx.lineTo(8, 8);
+        ctx.lineTo(-8, 8);
+        ctx.lineTo(-8, 0);
+        ctx.fill();
+
+        // Number
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.number, 0, 0);
+
+        // Headlights
+        ctx.fillStyle = '#ffeb3b';
+        ctx.fillRect(18, -7, 2, 4);
+        ctx.fillRect(18, 3, 2, 4);
+
+        // Taillights
+        ctx.fillStyle = '#f44336';
+        ctx.fillRect(-20, -7, 2, 4);
+        ctx.fillRect(-20, 3, 2, 4);
+
+        // Tire marks if slipping
+        if (Math.abs(this.slipAngle) > 0.1 && this.speed > 20) {
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-15, -12, 10, 2);
+            ctx.fillRect(-15, 10, 10, 2);
+            ctx.globalAlpha = 1.0;
+        }
+
+        ctx.restore();
+    }
+}
+
+// Game State
+let cars = [];
+let playerCar;
+let input = { up: false, down: false, left: false, right: false };
+let startTime = 0;
+let raceActive = false;
+
+// Input Listeners
+window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp') input.up = true;
+    if (e.key === 'ArrowDown') input.down = true;
+    if (e.key === 'ArrowLeft') input.left = true;
+    if (e.key === 'ArrowRight') input.right = true;
+});
+
+window.addEventListener('keyup', e => {
+    if (e.key === 'ArrowUp') input.up = false;
+    if (e.key === 'ArrowDown') input.down = false;
+    if (e.key === 'ArrowLeft') input.left = false;
+    if (e.key === 'ArrowRight') input.right = false;
+});
+
+function startGame() {
+    document.getElementById('start-screen').classList.add('hidden');
+    
+    cars = [];
+    const colors = ['#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ff00ff', '#00ffff', '#ffa500', '#ffffff'];
+    
+    // Create Player
+    playerCar = new Car(true, 0, 0, '#ff3e3e', '43');
+    cars.push(playerCar);
+    
+    // Create AI
+    for (let i = 1; i < TOTAL_CARS; i++) {
+        cars.push(new Car(false, -i * 50, 0, colors[i], i * 10 + 1));
+    }
+    
+    startTime = Date.now();
+    raceActive = true;
+    loop();
+}
+
+function checkRaceEnd() {
+    const finishedCars = cars.filter(c => c.finished).length;
+    if (finishedCars === TOTAL_CARS) {
+        raceActive = false;
+        const sorted = [...cars].sort((a, b) => a.finishTime - b.finishTime);
+        const pos = sorted.indexOf(playerCar) + 1;
+        
+        const suffix = pos === 1 ? 'st' : pos === 2 ? 'nd' : pos === 3 ? 'rd' : 'th';
+        document.getElementById('end-result').innerText = `Finished: ${pos}${suffix}`;
+        document.getElementById('game-over-screen').classList.remove('hidden');
+    }
+}
+
+function updateHUD() {
+    if (!playerCar) return;
+
+    // Speed & RPM
+    const speedMph = Math.floor(playerCar.speed * 2.23694);
+    document.getElementById('speed-display').innerText = speedMph;
+    document.getElementById('rpm-needle').style.transform = `rotate(${-90 + (playerCar.rpm / 9500) * 180}deg)`;
+    document.getElementById('gear-display').innerText = playerCar.gear;
+    
+    // Position
+    const sorted = [...cars].sort((a, b) => {
+        if (a.lap !== b.lap) return b.lap - a.lap;
+        return b.distance - a.distance;
+    });
+    const pos = sorted.indexOf(playerCar) + 1;
+    document.getElementById('pos-display').innerText = `${pos} / ${TOTAL_CARS}`;
+    
+    // Laps & Time
+    document.getElementById('lap-display').innerText = `${Math.min(playerCar.lap, LAP_COUNT)} / ${LAP_COUNT}`;
+    const elapsed = Date.now() - startTime;
+    const mins = Math.floor(elapsed / 60000);
+    const secs = Math.floor((elapsed % 60000) / 1000);
+    const ms = Math.floor((elapsed % 1000) / 10);
+    document.getElementById('time-display').innerText = 
+        `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
+
+    // Tires
+    ['fl', 'fr', 'rl', 'rr'].forEach((t, i) => {
+        const el = document.getElementById(`tire-${t}`);
+        const val = playerCar.tires[i] * 100;
+        el.style.width = `${val}%`;
+        el.style.background = val > 60 ? '#00ff00' : val > 30 ? '#ffff00' : '#ff0000';
+    });
+
+    // Fuel
+    document.getElementById('fuel-display').innerText = `${Math.floor(playerCar.fuel)}%`;
+    if (playerCar.fuel < 20) document.getElementById('fuel-display').style.color = 'red';
+
+    // Weight Transfer Dot
+    const dot = document.getElementById('weight-dot');
+    const latG = playerCar.steerAngle * playerCar.speed * 0.01;
+    const longG = (input.up ? 0.2 : input.down ? -0.4 : 0) * playerCar.speed * 0.01;
+    dot.style.transform = `translate(calc(-50% + ${latG * 20}px), calc(-50% + ${longG * 20}px))`;
+
+    // Telemetry
+    document.getElementById('tel-rpm').innerText = Math.floor(playerCar.rpm);
+    document.getElementById('tel-slip').innerText = Math.abs(playerCar.slipAngle).toFixed(2);
+    document.getElementById('tel-grip').innerText = Math.floor(((playerCar.tires.reduce((a,b)=>a+b,0)/4)*100));
+    
+    // Banking estimation based on position
+    const normPos = (playerCar.distance % TRACK_LENGTH) / TRACK_LENGTH;
+    let bank = 0;
+    if ((normPos > 0.25 && normPos < 0.5) || (normPos > 0.75)) {
+        bank = 33; // Talladega banking
+    }
+    document.getElementById('tel-bank').innerText = bank;
+}
+
+function drawTrack() {
+    ctx.fillStyle = '#333'; // Grass/Dirt area
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.translate(canvas.width/2, canvas.height/2);
+    
+    // Draw Asphalt
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = TRACK_WIDTH;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    ctx.beginPath();
+    // Approximate Oval Path
+    const w = 800;
+    const h = 500;
+    
+    ctx.moveTo(-w/2, h/2); // Start bottom left
+    ctx.lineTo(w/2, h/2);  // Bottom straight
+    ctx.arc(0, 0, w/2, 0, Math.PI, false); // Right turn (actually top arc in this coord system? No)
+    // Let's redraw properly for canvas coords (Y down)
+    
+    ctx.beginPath();
+    // Bottom Straight
+    ctx.moveTo(-w/2, h/2);
+    ctx.lineTo(w/2, h/2);
+    // Right Turn (Top half of ellipse essentially)
+    ctx.arc(0, 0, w/2, 0, Math.PI, true); 
+    // Top Straight
+    ctx.lineTo(-w/2, -h/2);
+    // Left Turn
+    ctx.arc(0, 0, w/2, Math.PI, 0, true);
+    
+    ctx.stroke();
+
+    // Draw Racing Line
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 10]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Start/Finish Line
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-w/2 + 50, h/2 - TRACK_WIDTH/2);
+    ctx.lineTo(-w/2 + 50, h/2 + TRACK_WIDTH/2);
+    ctx.stroke();
+
+    // Checkered pattern for start line
+    ctx.fillStyle = '#000';
+    for(let i=0; i<10; i++) {
+        for(let j=0; j<2; j++) {
+            if ((i+j)%2===0) {
+                ctx.fillRect(-w/2 + 45 + (i*5), h/2 - TRACK_WIDTH/2 + (j*TRACK_WIDTH/2), 5, TRACK_WIDTH/2);
+            }
+        }
+    }
+
+    ctx.restore();
+}
+
+function loop() {
+    if (!raceActive && cars.length === 0) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawTrack();
+
+    // Sort cars by Y for pseudo-depth
+    cars.sort((a, b) => a.renderY - b.renderY);
+
+    cars.forEach(car => {
+        if (raceActive) car.update(0.016, input); // ~60fps
+        car.draw(ctx);
+    });
+
+    if (raceActive) {
+        updateHUD();
+        requestAnimationFrame(loop);
+    }
+}
+
+// Initial Render
+drawTrack();
+
+</script>
 </body>
 </html>

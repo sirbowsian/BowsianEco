@@ -1,1 +1,3 @@
-Nothing should be ignored since only source files (.js, .html) were added without any build artifacts, dependencies, or temporary files.
+# No changes needed - only source/config files were modified/deleted
+# Source files like .js and .html should not be ignored
+# The current .gitignore is empty and no new ignores are needed
