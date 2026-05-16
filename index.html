@@ -2,888 +2,734 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Talladega Raceway - NASCAR Simulator</title>
+    <title>Talladega 3D - NASCAR Simulation</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: #1a1a1a;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: white;
-            user-select: none;
-        }
-        canvas {
-            display: block;
-        }
-        #ui-layer {
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Arial', sans-serif; user-select: none; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        
+        /* HUD Overlay */
+        #hud {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
             pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 20px;
-            box-sizing: border-box;
+            color: white;
+            text-shadow: 1px 1px 2px black;
         }
-        .hud-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        .stat-box {
-            background: rgba(0, 0, 0, 0.7);
+
+        .gauge-cluster {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #444;
+            border-radius: 10px;
             padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #ff3e3e;
-            min-width: 150px;
-        }
-        .stat-label {
-            font-size: 12px;
-            color: #aaa;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            font-family: monospace;
-        }
-        .gauge-container {
-            position: relative;
             width: 300px;
-            height: 150px;
-            background: rgba(0,0,0,0.8);
-            border-radius: 150px 150px 0 0;
-            margin: 0 auto;
+            backdrop-filter: blur(5px);
+        }
+
+        .tachometer {
+            position: relative;
+            height: 120px;
+            background: radial-gradient(circle at center, #333 0%, #000 100%);
+            border-radius: 60px 60px 0 0;
+            margin-bottom: 10px;
             overflow: hidden;
-            border: 2px solid #333;
         }
-        .gauge-bg {
+
+        .rpm-needle {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: conic-gradient(from 270deg, #333 0deg, #333 180deg);
-            border-radius: 150px 150px 0 0;
-        }
-        .gauge-fill {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: conic-gradient(from 270deg, #00ff00 0%, #ffff00 60%, #ff0000 90%, #ff0000 100%);
-            border-radius: 150px 150px 0 0;
-            transform: rotate(-180deg);
-            transition: transform 0.1s;
-            opacity: 0.8;
-        }
-        .gauge-needle {
-            position: absolute;
-            bottom: 0;
+            bottom: 10px;
             left: 50%;
-            width: 4px;
-            height: 130px;
+            width: 3px;
+            height: 50px;
             background: red;
             transform-origin: bottom center;
             transform: rotate(-90deg);
-            transition: transform 0.1s cubic-bezier(0.1, 0.7, 1.0, 0.1);
-            z-index: 10;
+            transition: transform 0.1s;
+            z-index: 2;
         }
-        .gauge-center {
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 40px;
-            height: 20px;
-            background: #1a1a1a;
-            border-radius: 20px 20px 0 0;
-            z-index: 11;
-        }
+
         .digital-readout {
-            position: absolute;
-            bottom: 10px;
-            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        .readout-box {
             text-align: center;
-            font-family: monospace;
-            font-size: 32px;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(0,0,0,0.8);
-            z-index: 12;
         }
-        .gear-display {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 48px;
-            font-weight: bold;
-            color: white;
-            z-index: 12;
-            text-shadow: 0 0 10px black;
+
+        .value { font-size: 24px; color: #0ff; }
+        .label { font-size: 10px; color: #aaa; text-transform: uppercase; }
+
+        .info-panel {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 15px;
+            width: 200px;
+            text-align: right;
         }
-        .tire-grid {
+
+        .tire-status {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 5px;
             margin-top: 10px;
+            font-size: 10px;
         }
-        .tire {
-            background: #333;
-            padding: 5px;
-            border-radius: 4px;
-            text-align: center;
-        }
+
         .tire-bar {
             height: 4px;
-            background: #555;
+            background: #333;
             margin-top: 2px;
-            border-radius: 2px;
-            overflow: hidden;
+            position: relative;
         }
         .tire-fill {
             height: 100%;
-            background: #00ff00;
+            background: #0f0;
             width: 100%;
             transition: width 0.5s, background 0.5s;
         }
-        .weight-transfer {
-            position: relative;
-            width: 60px;
-            height: 60px;
-            background: rgba(0,0,0,0.5);
-            border: 1px solid #555;
-            margin: 10px auto;
-        }
-        .weight-dot {
+
+        #start-screen {
             position: absolute;
-            width: 8px;
-            height: 8px;
-            background: yellow;
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            transition: top 0.1s, left 0.1s;
-        }
-        #start-screen, #game-over-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 100;
-            pointer-events: auto;
+            z-index: 10;
+            color: white;
         }
-        h1 {
-            font-size: 48px;
-            color: #ff3e3e;
-            text-transform: uppercase;
-            letter-spacing: 5px;
-            margin-bottom: 10px;
-            text-shadow: 0 0 20px rgba(255, 62, 62, 0.5);
-        }
+
+        h1 { font-size: 4rem; margin: 0; color: #ff3333; text-transform: italic; letter-spacing: -2px; }
+        h2 { font-size: 1.5rem; color: #ccc; margin-bottom: 30px; }
+        
         button {
             padding: 15px 40px;
-            font-size: 24px;
-            background: #ff3e3e;
+            font-size: 1.5rem;
+            background: #ff3333;
             color: white;
             border: none;
-            border-radius: 5px;
             cursor: pointer;
             text-transform: uppercase;
             font-weight: bold;
+            clip-path: polygon(10% 0, 100% 0, 100% 80%, 90% 100%, 0 100%, 0 20%);
             transition: transform 0.2s;
         }
-        button:hover {
-            transform: scale(1.05);
-            background: #ff5e5e;
-        }
-        .hidden {
-            display: none !important;
-        }
+        button:hover { transform: scale(1.05); background: #ff5555; }
+
         .controls-hint {
             margin-top: 20px;
-            color: #aaa;
-            font-size: 14px;
-            text-align: center;
+            font-size: 0.9rem;
+            color: #888;
         }
-        .key {
-            display: inline-block;
-            padding: 4px 8px;
-            background: #333;
-            border-radius: 4px;
-            border: 1px solid #555;
-            margin: 0 2px;
+        
+        #lap-timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            color: white;
+            border: 1px solid #444;
         }
+        
+        #position-indicator {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 40px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px black;
+        }
+        #position-indicator span { font-size: 16px; color: #aaa; }
     </style>
+    <!-- Load Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
-
-    <div id="ui-layer">
-        <div class="hud-top">
-            <div class="stat-box">
-                <div class="stat-label">Position</div>
-                <div class="stat-value" id="pos-display">1 / 8</div>
-                <div class="stat-label" style="margin-top:10px;">Lap</div>
-                <div class="stat-value" id="lap-display">1 / 3</div>
-                <div class="stat-label" style="margin-top:10px;">Time</div>
-                <div class="stat-value" id="time-display">00:00.00</div>
-            </div>
-            
-            <div class="stat-box" style="text-align: right;">
-                <div class="stat-label">Fuel</div>
-                <div class="stat-value" id="fuel-display">100%</div>
-                <div class="stat-label" style="margin-top:10px;">Tires</div>
-                <div class="tire-grid">
-                    <div class="tire">FL<div class="tire-bar"><div class="tire-fill" id="tire-fl"></div></div></div>
-                    <div class="tire">FR<div class="tire-bar"><div class="tire-fill" id="tire-fr"></div></div></div>
-                    <div class="tire">RL<div class="tire-bar"><div class="tire-fill" id="tire-rl"></div></div></div>
-                    <div class="tire">RR<div class="tire-bar"><div class="tire-fill" id="tire-rr"></div></div></div>
-                </div>
-            </div>
-        </div>
-
-        <div style="flex-grow: 1;"></div>
-
-        <div class="hud-bottom" style="display: flex; justify-content: space-between; align-items: flex-end;">
-            <div class="stat-box">
-                <div class="stat-label">Weight Transfer</div>
-                <div class="weight-transfer">
-                    <div class="weight-dot" id="weight-dot"></div>
-                </div>
-                <div class="stat-label" style="text-align: center; font-size: 10px;">G-Force Vector</div>
-            </div>
-
-            <div class="gauge-container">
-                <div class="gauge-bg"></div>
-                <div class="gauge-fill" id="rpm-fill"></div>
-                <div class="gauge-needle" id="rpm-needle"></div>
-                <div class="gauge-center"></div>
-                <div class="gear-display" id="gear-display">N</div>
-                <div class="digital-readout"><span id="speed-display">0</span> <span style="font-size:16px">MPH</span></div>
-            </div>
-
-            <div class="stat-box" style="min-width: 200px;">
-                <div class="stat-label">Telemetry</div>
-                <div style="font-family: monospace; font-size: 14px; line-height: 1.6;">
-                    RPM: <span id="tel-rpm">0</span><br>
-                    Slip: <span id="tel-slip">0</span>%<br>
-                    Grip: <span id="tel-grip">100</span>%<br>
-                    Bank: <span id="tel-bank">0</span>°
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div id="start-screen">
-        <h1>Talladega Raceway</h1>
-        <p style="font-size: 20px; margin-bottom: 30px; color: #ccc;">Realistic NASCAR Physics Simulation</p>
-        <button onclick="startGame()">Start Race</button>
+        <h1>TALLADEGA 3D</h1>
+        <h2>Superspeedway Simulation</h2>
+        <button id="start-btn">Start Engine</button>
         <div class="controls-hint">
-            Controls: <span class="key">↑</span> Gas &nbsp; <span class="key">↓</span> Brake &nbsp; <span class="key">←</span> <span class="key">→</span> Steer
+            Controls: ↑ Gas | ↓ Brake | ← → Steer<br>
+            Experience 33° Banking & Realistic Weight Transfer
         </div>
     </div>
 
-    <div id="game-over-screen" class="hidden">
-        <h1 id="end-title">Race Finished</h1>
-        <p id="end-result" style="font-size: 24px; margin-bottom: 20px;">Position: 1st</p>
-        <button onclick="location.reload()">Race Again</button>
+    <div id="position-indicator">POS: <span id="pos-val">8/8</span></div>
+    <div id="lap-timer">00:00.00</div>
+
+    <div id="hud" style="display:none;">
+        <div class="gauge-cluster">
+            <div class="tachometer">
+                <div class="rpm-needle" id="rpm-needle"></div>
+            </div>
+            <div class="digital-readout">
+                <div class="readout-box">
+                    <div class="value" id="speed-val">0</div>
+                    <div class="label">MPH</div>
+                </div>
+                <div class="readout-box">
+                    <div class="value" id="gear-val">N</div>
+                    <div class="label">GEAR</div>
+                </div>
+            </div>
+            <div class="tire-status">
+                <div>FL <div class="tire-bar"><div class="tire-fill" id="tire-fl"></div></div></div>
+                <div>FR <div class="tire-bar"><div class="tire-fill" id="tire-fr"></div></div></div>
+                <div>RL <div class="tire-bar"><div class="tire-fill" id="tire-rl"></div></div></div>
+                <div>RR <div class="tire-bar"><div class="tire-fill" id="tire-rr"></div></div></div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">TELEMETRY</div>
+            <div style="font-size: 14px;">G-Force: <span id="g-force" style="color:#0ff">0.0</span>G</div>
+            <div style="font-size: 14px;">Slip Angle: <span id="slip-angle" style="color:#0ff">0</span>°</div>
+            <div style="font-size: 14px;">Banking: <span id="banking-val" style="color:#0ff">0</span>°</div>
+            <div style="margin-top: 10px; font-size: 12px; color: #888;">Fuel: <span id="fuel-val">100</span>%</div>
+        </div>
     </div>
+
+    <div id="canvas-container"></div>
 
 <script>
 /**
- * TALLADEGA RACEWAY - PHYSICS ENGINE
- * Features: Realistic weight, inertia, slip angles, aerodynamics, tire wear
+ * TALLADEGA 3D - PHYSICS & RENDERING ENGINE
  */
 
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+// --- Configuration ---
+const CONFIG = {
+    trackRadius: 400,
+    trackWidth: 60,
+    bankingAngle: 33 * (Math.PI / 180), // 33 degrees
+    straightBanking: 9 * (Math.PI / 180),
+    carMass: 1542, // kg
+    enginePower: 750, // HP
+    maxRPM: 9500,
+    idleRPM: 2500,
+    tireGripBase: 1.8,
+    airDensity: 1.225,
+    dragCoeff: 0.35,
+    frontalArea: 2.1,
+    downforceCoeff: 3.5
+};
 
-// Resize handling
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+// --- Global Variables ---
+let scene, camera, renderer;
+let playerCar, aiCars = [];
+let trackMesh, grandstandMesh;
+let isGameActive = false;
+let clock = new THREE.Clock();
+let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
-// Game Constants
-const TRACK_LENGTH = 4000; // Abstract units
-const TRACK_WIDTH = 300;
-const LAP_COUNT = 3;
-const TOTAL_CARS = 8;
-
-// Physics Constants (NASCAR Specific)
-const CAR_MASS = 1542; // kg (3400 lbs)
-const ENGINE_POWER = 560000; // Watts (~750 HP)
-const DRAG_COEFF = 0.35;
-const DOWNFORCE_COEFF = 0.002;
-const FRICTION_ROLLING = 0.015;
-const MAX_STEER_ANGLE = 0.35; // Radians (~20 degrees)
-const STEER_SPEED = 0.08;
-const BRAKE_FORCE = 12000;
-const CENTER_OF_GRAVITY = 0.48; // 48% front bias
-
-class Car {
-    constructor(isPlayer, startX, startAngle, color, number) {
+// --- Physics State ---
+class CarPhysics {
+    constructor(mesh, color, number, isPlayer = false, startX = 0, startZ = 0) {
+        this.mesh = mesh;
         this.isPlayer = isPlayer;
-        this.x = startX;
-        this.y = startAngle; // In oval context, Y is angle around track
-        this.angle = startAngle; // Heading
-        this.speed = 0;
-        this.maxSpeed = 95 + (Math.random() * 5); // m/s (~210-220 mph)
-        
-        // Dynamics
-        this.velocity = { x: 0, y: 0 };
-        this.steerAngle = 0;
-        this.rpm = 1000;
-        this.gear = 1;
-        this.fuel = 100;
-        
-        // Tires [FL, FR, RL, RR] - 1.0 = new, 0.0 = bald
-        this.tires = [1.0, 1.0, 1.0, 1.0];
-        this.temp = [20, 20, 20, 20];
-        
-        // State
-        this.lap = 1;
-        this.distance = 0;
-        this.finished = false;
-        this.finishTime = 0;
-        
-        // Visuals
-        this.color = color;
         this.number = number;
-        this.slipAngle = 0;
+        this.color = color;
         
-        // AI
-        this.aiOffset = (Math.random() - 0.5) * (TRACK_WIDTH * 0.6);
-        this.aiAggression = 0.8 + Math.random() * 0.2;
+        // Position & Velocity
+        this.position = new THREE.Vector3(startX, 0, startZ);
+        this.velocity = new THREE.Vector3(0, 0, 0);
+        this.acceleration = new THREE.Vector3(0, 0, 0);
+        this.rotation = 0; // Yaw
+        this.angularVelocity = 0;
+        
+        // Engine & Drivetrain
+        this.rpm = 0;
+        this.gear = 1;
+        this.throttle = 0;
+        this.brake = 0;
+        this.steering = 0;
+        this.clutch = 0;
+        
+        // Stats
+        this.fuel = 100;
+        this.tireWear = { fl: 100, fr: 100, rl: 100, rr: 100 };
+        this.lap = 0;
+        this.checkpoint = 0;
+        this.finished = false;
+        this.rank = 8;
+
+        // Constants
+        this.maxSteer = 0.35; // Radians (~20 deg)
+        this.gears = [0, 3.5, 2.5, 1.8, 1.4, 1.0]; // Ratios
+        this.finalDrive = 3.8;
+        this.wheelRadius = 0.35;
     }
 
     update(dt, input) {
         if (this.finished) {
-            this.speed *= 0.98; // Slow down after finish
+            this.applyFriction(dt);
+            this.updateMesh();
             return;
         }
 
         // 1. Input Handling
-        let throttle = 0;
-        let brake = 0;
-        let steerInput = 0;
-
         if (this.isPlayer) {
-            if (input.up) throttle = 1;
-            if (input.down) brake = 1;
-            if (input.left) steerInput = -1;
-            if (input.right) steerInput = 1;
+            this.throttle = input.ArrowUp ? 1 : 0;
+            this.brake = input.ArrowDown ? 1 : 0;
+            
+            const steerSpeed = 2.0 * dt;
+            if (input.ArrowLeft) this.steering = Math.max(-this.maxSteer, this.steering - steerSpeed);
+            else if (input.ArrowRight) this.steering = Math.min(this.maxSteer, this.steering + steerSpeed);
+            else {
+                // Return to center
+                if (this.steering > 0) this.steering = Math.max(0, this.steering - steerSpeed);
+                if (this.steering < 0) this.steering = Math.min(0, this.steering + steerSpeed);
+            }
         } else {
             // AI Logic
-            this.updateAI(dt);
-            throttle = this.aiThrottle;
-            brake = this.aiBrake;
-            steerInput = this.aiSteer;
+            this.runAI(dt);
         }
 
-        // 2. Steering Physics (Speed sensitive + Return to center)
-        const speedFactor = Math.max(0.2, 1 - (Math.abs(this.speed) / 80));
-        const targetSteer = steerInput * MAX_STEER_ANGLE * speedFactor;
+        // 2. Engine Physics
+        this.updateEngine(dt);
+
+        // 3. Forces Calculation
+        this.calculateForces(dt);
+
+        // 4. Integration
+        this.velocity.add(this.acceleration.clone().multiplyScalar(dt));
+        this.position.add(this.velocity.clone().multiplyScalar(dt));
         
-        // Smooth steering movement
-        if (this.steerAngle < targetSteer) {
-            this.steerAngle = Math.min(targetSteer, this.steerAngle + STEER_SPEED);
-        } else {
-            this.steerAngle = Math.max(targetSteer, this.steerAngle - STEER_SPEED);
+        // Rotation integration
+        this.rotation += this.angularVelocity * dt;
+        this.angularVelocity *= 0.9; // Damping
+
+        // 5. Track Constraints & Banking
+        this.constrainToTrack();
+
+        // 6. Update Visuals
+        this.updateMesh();
+        if (this.isPlayer) this.updateTelemetry();
+    }
+
+    runAI(dt) {
+        // Simple AI: Follow the oval
+        const distToCenter = Math.sqrt(this.position.x**2 + this.position.z**2);
+        const angle = Math.atan2(this.position.z, this.position.x);
+        
+        // Target direction is tangent to the circle
+        let targetAngle = angle + Math.PI / 2;
+        if (this.position.x < 0) targetAngle -= Math.PI; // Correct for opposite side
+        
+        // Normalize angles
+        let diff = targetAngle - this.rotation;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        // Steering
+        if (diff > 0.1) this.steering = Math.min(this.maxSteer, this.steering + 3*dt);
+        else if (diff < -0.1) this.steering = Math.max(-this.maxSteer, this.steering - 3*dt);
+        else this.steering *= 0.9;
+
+        // Throttle/Brake
+        const speed = this.velocity.length();
+        if (speed < 180 && this.fuel > 0) this.throttle = 1;
+        else this.throttle = 0.8; // Cruise
+        
+        if (Math.abs(diff) > 1.0) this.throttle = 0.2; // Slow down for sharp turns (if any)
+        if (speed > 210) this.brake = 0.5;
+        else this.brake = 0;
+    }
+
+    updateEngine(dt) {
+        // Gear shifting logic
+        const speedKmh = this.velocity.length() * 3.6;
+        const wheelRPM = (speedKmh / 3.6) / (2 * Math.PI * this.wheelRadius) * 60;
+        
+        let targetGear = this.gear;
+        if (this.gear < this.gears.length - 1 && this.rpm > CONFIG.maxRPM * 0.9) targetGear++;
+        if (this.gear > 1 && this.rpm < CONFIG.idleRPM * 1.2) targetGear--;
+        
+        if (targetGear !== this.gear) {
+            this.gear = targetGear;
         }
 
-        // Natural return to center if no input
-        if (steerInput === 0) {
-            this.steerAngle *= 0.9;
-        }
-
-        // 3. Engine & Transmission
-        if (throttle > 0 && this.fuel > 0) {
-            // Simple automatic transmission logic
-            const shiftPoints = [40, 70, 100, 140, 190]; // MPH approx
-            const speedMph = this.speed * 2.23694;
-            
-            if (this.gear < 5 && speedMph > shiftPoints[this.gear-1]) {
-                this.gear++;
-                this.rpm -= 2000;
-            } else if (this.gear > 1 && speedMph < shiftPoints[this.gear-2] * 0.8) {
-                this.gear--;
-                this.rpm += 2000;
-            }
-
-            // RPM Calculation based on speed and gear
-            const gearRatio = [3.5, 2.5, 1.8, 1.4, 1.0][this.gear-1];
-            const targetRpm = Math.min(9500, 1000 + (speedMph * 40 / gearRatio));
-            this.rpm = targetRpm + (throttle * 1500 * Math.sin(Date.now()/100)); // Idle jitter
-            
-            // Force application
-            const currentPower = ENGINE_POWER * (this.rpm / 9000) * throttle;
-            const force = currentPower / (this.speed + 1); // F = P/v
-            this.speed += (force / CAR_MASS) * dt;
-            
-            // Fuel consumption
-            this.fuel -= 0.005 * throttle * dt;
-        } else {
-            // Engine braking / Idle
-            this.rpm = Math.max(1000, this.rpm - 500 * dt);
-            if (this.speed > 0) this.gear = 1;
-        }
-
-        // Braking
-        if (brake) {
-            this.speed -= (BRAKE_FORCE / CAR_MASS) * dt;
-            // Brake heat/tire wear
-            this.tires[0] -= 0.0001 * dt;
-            this.tires[1] -= 0.0001 * dt;
-        }
-
-        // Drag & Rolling Resistance
-        const drag = 0.5 * 1.225 * (this.speed * this.speed) * DRAG_COEFF * 2.0;
-        const rolling = CAR_MASS * 9.81 * FRICTION_ROLLING;
-        this.speed -= ((drag + rolling) / CAR_MASS) * dt;
-
-        // Cap speed
-        if (this.speed < 0) this.speed = 0;
-        if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
-
-        // 4. Cornering Physics (Slip Angle & Weight Transfer)
-        // Calculate lateral force capability based on tire wear and speed
-        const avgTireHealth = (this.tires[0] + this.tires[1] + this.tires[2] + this.tires[3]) / 4;
-        const gripLevel = 0.6 + (avgTireHealth * 0.4); // Base grip + tire bonus
-        
-        // Centrifugal force simulation
-        // The faster we go, the harder it is to turn (understeer)
-        const lateralG = (this.speed * this.speed) * Math.sin(Math.abs(this.steerAngle)) * 0.005;
-        
-        // Slip angle: difference between where car points and where it goes
-        this.slipAngle = this.steerAngle * (1 - (this.speed / 120) * (1-gripLevel));
-        
-        // Apply rotation
-        const turnRate = (this.speed * Math.tan(this.slipAngle)) / 2.5; // Wheelbase factor
-        this.angle += turnRate * dt;
-
-        // 5. Movement Integration
-        // Convert polar coordinates (track angle) to cartesian for rendering
-        // But internally we track distance along the track spline
-        
-        // Simplified Oval Physics:
-        // We move along a predefined path, but X/Y deviation represents leaving the racing line
-        
-        const moveStep = this.speed * dt;
-        this.distance += moveStep;
-        
-        // Calculate Track Position (Oval: 2 straights, 2 turns)
-        // Normalized position 0.0 to 1.0
-        const normPos = (this.distance % TRACK_LENGTH) / TRACK_LENGTH;
-        
-        // Lap counting
-        const prevLapDist = (this.lap - 1) * TRACK_LENGTH;
-        if (this.distance >= this.lap * TRACK_LENGTH && this.lap <= LAP_COUNT) {
-            this.lap++;
-            if (this.lap > LAP_COUNT) {
-                this.finished = true;
-                this.finishTime = Date.now() - startTime;
-                checkRaceEnd();
-            }
-        }
-
-        // Determine X,Y based on track geometry (Super Speedway Oval)
-        // Straight 1: Bottom, Turn 1: Right, Straight 2: Top, Turn 2: Left
-        const trackW = 800;
-        const trackH = 500;
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        
-        let tx, ty, trackAngle;
-        
-        if (normPos < 0.25) {
-            // Back Straight
-            const t = normPos * 4;
-            tx = centerX - trackW/2 + (trackW * t);
-            ty = centerY + trackH/2;
-            trackAngle = 0;
-        } else if (normPos < 0.5) {
-            // Turn 1 & Front Straight start
-            const t = (normPos - 0.25) * 4;
-            const angle = Math.PI * t; // 0 to PI
-            tx = centerX + trackW/2 * Math.cos(angle);
-            ty = centerY + trackH/2 * Math.sin(angle);
-            trackAngle = Math.PI / 2 + angle;
-        } else if (normPos < 0.75) {
-            // Front Straight
-            const t = (normPos - 0.5) * 4;
-            tx = centerX + trackW/2 - (trackW * t);
-            ty = centerY - trackH/2;
-            trackAngle = Math.PI;
-        } else {
-            // Turn 2
-            const t = (normPos - 0.75) * 4;
-            const angle = Math.PI + (Math.PI * t);
-            tx = centerX - trackW/2 * Math.cos(angle);
-            ty = centerY - trackH/2 * Math.sin(angle);
-            trackAngle = -Math.PI / 2 + angle;
-        }
-
-        // Apply "Off-line" movement based on steering input vs centrifugal force
-        // If steering into turn, we stay on line. If we drift, we move outward.
-        const drift = (Math.abs(this.slipAngle) - Math.abs(this.steerAngle)) * this.speed * 2;
-        
-        // Perpendicular offset
-        const perpX = -Math.sin(trackAngle);
-        const perpY = Math.cos(trackAngle);
-        
-        // AI tries to stay close to optimal line, Player has more freedom
-        let targetOffset = this.aiOffset;
-        if (this.isPlayer) {
-            // Player control over lateral position is limited by physics
-            targetOffset += (this.steerAngle * 50) + (drift * 10);
-        } else {
-            // AI smooths out offset
-            this.aiOffset += (targetOffset - this.aiOffset) * 0.05;
-        }
-
-        this.renderX = tx + (perpX * targetOffset);
-        this.renderY = ty + (perpY * targetOffset);
-        
-        // Tire Wear Logic
-        if (this.speed > 40) {
-            const wearFactor = (Math.abs(this.steerAngle) * this.speed) / 50000;
-            const slipWear = (Math.abs(this.slipAngle) * this.speed) / 20000;
-            
-            // Outer tires wear more in turns
-            if (normPos > 0.25 && normPos < 0.5) {
-                this.tires[1] -= (wearFactor + slipWear) * dt; // RF
-                this.tires[3] -= (wearFactor + slipWear) * dt; // RR
-            } else if (normPos > 0.75) {
-                this.tires[0] -= (wearFactor + slipWear) * dt; // LF
-                this.tires[2] -= (wearFactor + slipWear) * dt; // LR
+        // Calculate RPM based on speed and gear
+        if (this.gear > 0) {
+            const theoreticalRPM = wheelRPM * this.gears[this.gear] * this.finalDrive;
+            if (this.throttle > 0.1) {
+                this.rpm = Math.max(CONFIG.idleRPM, Math.min(CONFIG.maxRPM, theoreticalRPM + (this.throttle * 2000)));
             } else {
-                // Straights
-                this.tires.forEach((t, i) => this.tires[i] -= wearFactor * 0.2 * dt);
+                this.rpm = Math.max(CONFIG.idleRPM, theoreticalRPM);
             }
-            
-            // Clamp tire health
-            this.tires = this.tires.map(t => Math.max(0.1, t));
-        }
-    }
-
-    updateAI(dt) {
-        // Simple AI: Follow ideal line, brake if too fast for corner
-        const normPos = (this.distance % TRACK_LENGTH) / TRACK_LENGTH;
-        const inTurn = (normPos > 0.2 && normPos < 0.5) || (normPos > 0.7 && normPos < 0.95);
-        
-        this.aiThrottle = this.aiAggression;
-        this.aiBrake = 0;
-        this.aiSteer = 0;
-
-        if (inTurn) {
-            // Determine turn direction
-            const turnDir = (normPos > 0.2 && normPos < 0.5) ? 1 : -1;
-            
-            // Ideal speed for cornering
-            const idealSpeed = 65 * this.aiAggression; 
-            if (this.speed > idealSpeed) {
-                this.aiBrake = 0.5;
-                this.aiThrottle = 0;
-            }
-            
-            // Steering with lookahead
-            this.aiSteer = turnDir * 0.8;
         } else {
-            // Straights
-            this.aiSteer = 0;
-            // Avoid collisions (simple raycast fake)
-            // Check for cars ahead
-            for (let other of cars) {
-                if (other !== this && !other.finished) {
-                    const dist = Math.hypot(other.renderX - this.renderX, other.renderY - this.renderY);
-                    if (dist < 60) {
-                        // Brake or steer away
-                        if (this.aiOffset * turnDir < 0) {
-                             this.aiOffset += 2 * dt; // Move out
-                        } else {
-                            this.aiBrake = 0.8;
-                        }
-                    }
-                }
+            this.rpm = CONFIG.idleRPM + (this.throttle * 2000);
+        }
+
+        // Fuel Consumption
+        if (this.throttle > 0) {
+            this.fuel -= (this.rpm / CONFIG.maxRPM) * this.throttle * 0.005;
+            if (this.fuel <= 0) {
+                this.fuel = 0;
+                this.throttle = 0;
             }
         }
     }
 
-    draw(ctx) {
-        ctx.save();
-        ctx.translate(this.renderX, this.renderY);
-        ctx.rotate(this.angle);
+    calculateForces(dt) {
+        const speed = this.velocity.length();
+        const forward = new THREE.Vector3(Math.sin(this.rotation), 0, -Math.cos(this.rotation));
+        const right = new THREE.Vector3(Math.cos(this.rotation), 0, Math.sin(this.rotation));
 
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(-22, -10, 44, 20);
+        this.acceleration.set(0, 0, 0);
 
-        // Body
-        ctx.fillStyle = this.color;
-        // NASCAR Shape (simplified)
-        ctx.beginPath();
-        ctx.roundRect(-20, -9, 40, 18, 4);
-        ctx.fill();
-
-        // Roof / Windshield
-        ctx.fillStyle = '#111';
-        ctx.beginPath();
-        ctx.moveTo(-5, -8);
-        ctx.lineTo(5, -8);
-        ctx.lineTo(8, 0);
-        ctx.lineTo(8, 8);
-        ctx.lineTo(-8, 8);
-        ctx.lineTo(-8, 0);
-        ctx.fill();
-
-        // Number
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 10px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.number, 0, 0);
-
-        // Headlights
-        ctx.fillStyle = '#ffeb3b';
-        ctx.fillRect(18, -7, 2, 4);
-        ctx.fillRect(18, 3, 2, 4);
-
-        // Taillights
-        ctx.fillStyle = '#f44336';
-        ctx.fillRect(-20, -7, 2, 4);
-        ctx.fillRect(-20, 3, 2, 4);
-
-        // Tire marks if slipping
-        if (Math.abs(this.slipAngle) > 0.1 && this.speed > 20) {
-            ctx.globalAlpha = 0.3;
-            ctx.fillStyle = '#000';
-            ctx.fillRect(-15, -12, 10, 2);
-            ctx.fillRect(-15, 10, 10, 2);
-            ctx.globalAlpha = 1.0;
+        // 1. Engine Force
+        const torqueCurve = 1.0 - Math.pow((this.rpm - 7000) / 4000, 2);
+        const engineTorque = (this.rpm / CONFIG.maxRPM) * CONFIG.enginePower * 745.7 * torqueCurve;
+        const driveForce = (engineTorque * this.gears[this.gear] * this.finalDrive * 0.95) / this.wheelRadius;
+        
+        if (this.throttle > 0 && this.gear > 0) {
+            this.acceleration.add(forward.clone().multiplyScalar(driveForce / CONFIG.carMass));
         }
 
-        ctx.restore();
-    }
-}
+        // 2. Braking
+        if (this.brake > 0) {
+            const brakeForce = 15000 * this.brake;
+            this.acceleration.sub(forward.clone().multiplyScalar(brakeForce / CONFIG.carMass));
+        }
 
-// Game State
-let cars = [];
-let playerCar;
-let input = { up: false, down: false, left: false, right: false };
-let startTime = 0;
-let raceActive = false;
+        // 3. Aerodynamic Drag
+        const dragForce = 0.5 * CONFIG.airDensity * CONFIG.dragCoeff * CONFIG.frontalArea * speed * speed;
+        const dragAccel = dragForce / CONFIG.carMass;
+        if (speed > 0.1) {
+            this.acceleration.sub(this.velocity.clone().normalize().multiplyScalar(dragAccel));
+        }
 
-// Input Listeners
-window.addEventListener('keydown', e => {
-    if (e.key === 'ArrowUp') input.up = true;
-    if (e.key === 'ArrowDown') input.down = true;
-    if (e.key === 'ArrowLeft') input.left = true;
-    if (e.key === 'ArrowRight') input.right = true;
-});
+        // 4. Lateral Grip (Cornering)
+        const velocityHeading = Math.atan2(this.velocity.x, -this.velocity.z);
+        let slipAngle = velocityHeading - this.rotation;
+        while (slipAngle < -Math.PI) slipAngle += Math.PI * 2;
+        while (slipAngle > Math.PI) slipAngle -= Math.PI * 2;
 
-window.addEventListener('keyup', e => {
-    if (e.key === 'ArrowUp') input.up = false;
-    if (e.key === 'ArrowDown') input.down = false;
-    if (e.key === 'ArrowLeft') input.left = false;
-    if (e.key === 'ArrowRight') input.right = false;
-});
+        const avgWear = (this.tireWear.fl + this.tireWear.fr + this.tireWear.rl + this.tireWear.rr) / 400;
+        const currentGrip = CONFIG.tireGripBase * avgWear;
 
-function startGame() {
-    document.getElementById('start-screen').classList.add('hidden');
-    
-    cars = [];
-    const colors = ['#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ff00ff', '#00ffff', '#ffa500', '#ffffff'];
-    
-    // Create Player
-    playerCar = new Car(true, 0, 0, '#ff3e3e', '43');
-    cars.push(playerCar);
-    
-    // Create AI
-    for (let i = 1; i < TOTAL_CARS; i++) {
-        cars.push(new Car(false, -i * 50, 0, colors[i], i * 10 + 1));
-    }
-    
-    startTime = Date.now();
-    raceActive = true;
-    loop();
-}
-
-function checkRaceEnd() {
-    const finishedCars = cars.filter(c => c.finished).length;
-    if (finishedCars === TOTAL_CARS) {
-        raceActive = false;
-        const sorted = [...cars].sort((a, b) => a.finishTime - b.finishTime);
-        const pos = sorted.indexOf(playerCar) + 1;
+        const lateralForceMag = slipAngle * speed * currentGrip * CONFIG.carMass * 2.0;
+        const lateralForce = Math.min(lateralForceMag, 20000);
         
-        const suffix = pos === 1 ? 'st' : pos === 2 ? 'nd' : pos === 3 ? 'rd' : 'th';
-        document.getElementById('end-result').innerText = `Finished: ${pos}${suffix}`;
-        document.getElementById('game-over-screen').classList.remove('hidden');
+        const lateralDir = new THREE.Vector3(-Math.cos(this.rotation), 0, -Math.sin(this.rotation));
+        if (slipAngle > 0) this.acceleration.add(lateralDir.clone().multiplyScalar(lateralForce / CONFIG.carMass));
+        else this.acceleration.sub(lateralDir.clone().multiplyScalar(lateralForce / CONFIG.carMass));
+
+        const steerFactor = speed > 10 ? (30 / speed) : 3.0;
+        this.angularVelocity = (this.steering * steerFactor) - (slipAngle * 2.0);
+
+        this.slipAngle = slipAngle * (180/Math.PI);
+    }
+
+    applyFriction(dt) {
+        this.velocity.multiplyScalar(0.98);
+        this.rotation += this.angularVelocity * dt;
+        this.angularVelocity *= 0.9;
+    }
+
+    constrainToTrack() {
+        const dist = Math.sqrt(this.position.x**2 + this.position.z**2);
+        const idealRadius = CONFIG.trackRadius;
+        
+        if (dist < idealRadius - CONFIG.trackWidth/2 || dist > idealRadius + CONFIG.trackWidth/2) {
+            const pushBack = (dist < idealRadius) ? 1 : -1;
+            const wallForce = 50.0;
+            const normal = this.position.clone().normalize();
+            this.velocity.add(normal.multiplyScalar(pushBack * wallForce * dt));
+            this.velocity.multiplyScalar(0.95);
+        }
+
+        const angleOnTrack = Math.atan2(this.position.z, this.position.x);
+        const absAngle = Math.abs(angleOnTrack);
+        const inTurn = (absAngle > 0.5 && absAngle < 2.6);
+        
+        const targetBank = inTurn ? CONFIG.bankingAngle : CONFIG.straightBanking;
+        const currentBank = this.mesh.rotation.z;
+        const bankSign = (this.position.x > 0) ? 1 : -1;
+        this.mesh.rotation.z = THREE.MathUtils.lerp(currentBank, bankSign * targetBank, 0.1);
+        
+        this.position.y = 0; 
+        
+        const speed = this.velocity.length();
+        const downforce = (speed * speed) * 0.0001;
+        this.mesh.position.y = -downforce; 
+    }
+
+    updateMesh() {
+        this.mesh.position.copy(this.position);
+        this.mesh.rotation.y = this.rotation;
+        
+        const bounce = Math.sin(Date.now() * 0.02) * (this.velocity.length() * 0.0005);
+        this.mesh.children[0].position.y = 0.5 + bounce;
+    }
+
+    updateTelemetry() {
+        document.getElementById('rpm-needle').style.transform = `rotate(${-90 + (this.rpm / CONFIG.maxRPM) * 180}deg)`;
+        document.getElementById('speed-val').innerText = Math.floor(this.velocity.length() * 2.23694);
+        document.getElementById('gear-val').innerText = this.gear === 0 ? 'N' : this.gear;
+        document.getElementById('fuel-val').innerText = Math.floor(this.fuel);
+        document.getElementById('g-force').innerText = (this.acceleration.length() / 9.81).toFixed(2);
+        document.getElementById('slip-angle').innerText = Math.abs(this.slipAngle).toFixed(1);
+        
+        const updateTire = (id, val) => {
+            const el = document.getElementById(id);
+            el.style.width = val + '%';
+            if (val > 80) el.style.background = '#0f0';
+            else if (val > 40) el.style.background = '#ff0';
+            else el.style.background = '#f00';
+        };
+        updateTire('tire-fl', this.tireWear.fl);
+        updateTire('tire-fr', this.tireWear.fr);
+        updateTire('tire-rl', this.tireWear.rl);
+        updateTire('tire-rr', this.tireWear.rr);
+
+        const wearRate = (Math.abs(this.slipAngle) * 0.01) + (this.velocity.length() * 0.00005);
+        this.tireWear.fl -= wearRate;
+        this.tireWear.fr -= wearRate;
+        this.tireWear.rl -= wearRate * 0.8;
+        this.tireWear.rr -= wearRate * 0.8;
     }
 }
 
-function updateHUD() {
+// --- Initialization ---
+
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB);
+    scene.fog = new THREE.Fog(0x87CEEB, 200, 1500);
+
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.set(0, 20, -50);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(100, 200, 100);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 1000;
+    dirLight.shadow.camera.left = -500;
+    dirLight.shadow.camera.right = 500;
+    dirLight.shadow.camera.top = 500;
+    dirLight.shadow.camera.bottom = -500;
+    scene.add(dirLight);
+
+    createTrack();
+    createGrandstands();
+    
+    const playerGeo = createCarGeometry(0xff0000);
+    playerCar = new CarPhysics(playerGeo, 0xff0000, 88, true, CONFIG.trackRadius, 0);
+    scene.add(playerCar.mesh);
+
+    const colors = [0x0000ff, 0xffff00, 0x00ff00, 0xff00ff, 0xffa500, 0x00ffff, 0xffffff];
+    for (let i = 0; i < 7; i++) {
+        const geo = createCarGeometry(colors[i]);
+        const offsetAngle = (i + 1) * 0.1;
+        const startX = Math.cos(offsetAngle) * CONFIG.trackRadius;
+        const startZ = Math.sin(offsetAngle) * CONFIG.trackRadius;
+        
+        const ai = new CarPhysics(geo, colors[i], i + 10, false, startX, startZ);
+        aiCars.push(ai);
+        scene.add(ai.mesh);
+    }
+
+    window.addEventListener('resize', onWindowResize, false);
+    document.addEventListener('keydown', (e) => keys[e.code] = true);
+    document.addEventListener('keyup', (e) => keys[e.code] = false);
+    
+    document.getElementById('start-btn').addEventListener('click', () => {
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('hud').style.display = 'flex';
+        isGameActive = true;
+        clock.start();
+        animate();
+    });
+}
+
+function createCarGeometry(color) {
+    const carGroup = new THREE.Group();
+
+    const chassisGeo = new THREE.BoxGeometry(1.8, 0.5, 4.5);
+    const chassisMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2, metalness: 0.6 });
+    const chassis = new THREE.Mesh(chassisGeo, chassisMat);
+    chassis.position.y = 0.5;
+    chassis.castShadow = true;
+    carGroup.add(chassis);
+
+    const cabinGeo = new THREE.BoxGeometry(1.4, 0.4, 2.0);
+    const cabinMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.1 });
+    const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+    cabin.position.set(0, 0.9, -0.2);
+    cabin.castShadow = true;
+    carGroup.add(cabin);
+
+    const spoilerGeo = new THREE.BoxGeometry(1.6, 0.1, 0.4);
+    const spoiler = new THREE.Mesh(spoilerGeo, chassisMat);
+    spoiler.position.set(0, 1.0, 2.0);
+    carGroup.add(spoiler);
+    
+    const spoilerPostL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.1), new THREE.MeshStandardMaterial({color:0x555555}));
+    spoilerPostL.position.set(0.6, 0.7, 2.0);
+    carGroup.add(spoilerPostL);
+    const spoilerPostR = spoilerPostL.clone();
+    spoilerPostR.position.set(-0.6, 0.7, 2.0);
+    carGroup.add(spoilerPostR);
+
+    const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.3, 16);
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+    wheelGeo.rotateZ(Math.PI / 2);
+
+    const positions = [
+        { x: -0.9, z: 1.5 }, { x: 0.9, z: 1.5 },
+        { x: -0.9, z: -1.5 }, { x: 0.9, z: -1.5 }
+    ];
+
+    positions.forEach(pos => {
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.position.set(pos.x, 0.35, pos.z);
+        wheel.castShadow = true;
+        carGroup.add(wheel);
+    });
+
+    return carGroup;
+}
+
+function createTrack() {
+    const trackGroup = new THREE.Group();
+
+    const shape = new THREE.Shape();
+    const outerR = CONFIG.trackRadius + CONFIG.trackWidth/2;
+    const innerR = CONFIG.trackRadius - CONFIG.trackWidth/2;
+    
+    shape.absarc(0, 0, outerR, 0, Math.PI * 2, false);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, innerR, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+        depth: 1,
+        bevelEnabled: false
+    });
+    
+    geometry.rotateX(-Math.PI / 2);
+    
+    const material = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+    const track = new THREE.Mesh(geometry, material);
+    track.receiveShadow = true;
+    trackGroup.add(track);
+
+    const lineGeo = new THREE.RingGeometry(CONFIG.trackRadius - 2, CONFIG.trackRadius + 2, 64);
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.3, transparent: true, side: THREE.DoubleSide });
+    const line = new THREE.Mesh(lineGeo, lineMat);
+    line.rotation.x = -Math.PI / 2;
+    line.position.y = 0.01;
+    trackGroup.add(line);
+
+    const sfGeo = new THREE.PlaneGeometry(CONFIG.trackWidth, 10);
+    const sfMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const sf = new THREE.Mesh(sfGeo, sfMat);
+    sf.rotation.x = -Math.PI / 2;
+    sf.position.set(CONFIG.trackRadius, 0.02, 0);
+    trackGroup.add(sf);
+
+    scene.add(trackGroup);
+    trackMesh = trackGroup;
+}
+
+function createGrandstands() {
+    const standsGroup = new THREE.Group();
+    const geo = new THREE.BoxGeometry(200, 40, 20);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+    
+    const mainStand = new THREE.Mesh(geo, mat);
+    mainStand.position.set(0, 20, CONFIG.trackRadius + CONFIG.trackWidth/2 + 15);
+    mainStand.receiveShadow = true;
+    standsGroup.add(mainStand);
+
+    const backStand = new THREE.Mesh(geo, mat);
+    backStand.position.set(0, 15, -(CONFIG.trackRadius + CONFIG.trackWidth/2 + 15));
+    backStand.scale.set(0.6, 0.8, 0.8);
+    standsGroup.add(backStand);
+
+    scene.add(standsGroup);
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function updateCamera() {
     if (!playerCar) return;
 
-    // Speed & RPM
-    const speedMph = Math.floor(playerCar.speed * 2.23694);
-    document.getElementById('speed-display').innerText = speedMph;
-    document.getElementById('rpm-needle').style.transform = `rotate(${-90 + (playerCar.rpm / 9500) * 180}deg)`;
-    document.getElementById('gear-display').innerText = playerCar.gear;
+    const relativeOffset = new THREE.Vector3(0, 6, -12);
+    const cameraOffset = relativeOffset.applyMatrix4(playerCar.mesh.matrixWorld);
+    camera.position.lerp(cameraOffset, 0.1);
     
-    // Position
-    const sorted = [...cars].sort((a, b) => {
-        if (a.lap !== b.lap) return b.lap - a.lap;
-        return b.distance - a.distance;
-    });
-    const pos = sorted.indexOf(playerCar) + 1;
-    document.getElementById('pos-display').innerText = `${pos} / ${TOTAL_CARS}`;
-    
-    // Laps & Time
-    document.getElementById('lap-display').innerText = `${Math.min(playerCar.lap, LAP_COUNT)} / ${LAP_COUNT}`;
-    const elapsed = Date.now() - startTime;
-    const mins = Math.floor(elapsed / 60000);
-    const secs = Math.floor((elapsed % 60000) / 1000);
-    const ms = Math.floor((elapsed % 1000) / 10);
-    document.getElementById('time-display').innerText = 
-        `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
-
-    // Tires
-    ['fl', 'fr', 'rl', 'rr'].forEach((t, i) => {
-        const el = document.getElementById(`tire-${t}`);
-        const val = playerCar.tires[i] * 100;
-        el.style.width = `${val}%`;
-        el.style.background = val > 60 ? '#00ff00' : val > 30 ? '#ffff00' : '#ff0000';
-    });
-
-    // Fuel
-    document.getElementById('fuel-display').innerText = `${Math.floor(playerCar.fuel)}%`;
-    if (playerCar.fuel < 20) document.getElementById('fuel-display').style.color = 'red';
-
-    // Weight Transfer Dot
-    const dot = document.getElementById('weight-dot');
-    const latG = playerCar.steerAngle * playerCar.speed * 0.01;
-    const longG = (input.up ? 0.2 : input.down ? -0.4 : 0) * playerCar.speed * 0.01;
-    dot.style.transform = `translate(calc(-50% + ${latG * 20}px), calc(-50% + ${longG * 20}px))`;
-
-    // Telemetry
-    document.getElementById('tel-rpm').innerText = Math.floor(playerCar.rpm);
-    document.getElementById('tel-slip').innerText = Math.abs(playerCar.slipAngle).toFixed(2);
-    document.getElementById('tel-grip').innerText = Math.floor(((playerCar.tires.reduce((a,b)=>a+b,0)/4)*100));
-    
-    // Banking estimation based on position
-    const normPos = (playerCar.distance % TRACK_LENGTH) / TRACK_LENGTH;
-    let bank = 0;
-    if ((normPos > 0.25 && normPos < 0.5) || (normPos > 0.75)) {
-        bank = 33; // Talladega banking
-    }
-    document.getElementById('tel-bank').innerText = bank;
+    const lookAtPos = playerCar.mesh.position.clone().add(
+        new THREE.Vector3(Math.sin(playerCar.rotation), 1, -Math.cos(playerCar.rotation)).multiplyScalar(10)
+    );
+    camera.lookAt(lookAtPos);
 }
 
-function drawTrack() {
-    ctx.fillStyle = '#333'; // Grass/Dirt area
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.save();
-    ctx.translate(canvas.width/2, canvas.height/2);
+function updateRankings() {
+    const allCars = [playerCar, ...aiCars];
     
-    // Draw Asphalt
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = TRACK_WIDTH;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    
-    ctx.beginPath();
-    // Approximate Oval Path
-    const w = 800;
-    const h = 500;
-    
-    ctx.moveTo(-w/2, h/2); // Start bottom left
-    ctx.lineTo(w/2, h/2);  // Bottom straight
-    ctx.arc(0, 0, w/2, 0, Math.PI, false); // Right turn (actually top arc in this coord system? No)
-    // Let's redraw properly for canvas coords (Y down)
-    
-    ctx.beginPath();
-    // Bottom Straight
-    ctx.moveTo(-w/2, h/2);
-    ctx.lineTo(w/2, h/2);
-    // Right Turn (Top half of ellipse essentially)
-    ctx.arc(0, 0, w/2, 0, Math.PI, true); 
-    // Top Straight
-    ctx.lineTo(-w/2, -h/2);
-    // Left Turn
-    ctx.arc(0, 0, w/2, Math.PI, 0, true);
-    
-    ctx.stroke();
-
-    // Draw Racing Line
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([10, 10]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Start/Finish Line
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(-w/2 + 50, h/2 - TRACK_WIDTH/2);
-    ctx.lineTo(-w/2 + 50, h/2 + TRACK_WIDTH/2);
-    ctx.stroke();
-
-    // Checkered pattern for start line
-    ctx.fillStyle = '#000';
-    for(let i=0; i<10; i++) {
-        for(let j=0; j<2; j++) {
-            if ((i+j)%2===0) {
-                ctx.fillRect(-w/2 + 45 + (i*5), h/2 - TRACK_WIDTH/2 + (j*TRACK_WIDTH/2), 5, TRACK_WIDTH/2);
-            }
-        }
-    }
-
-    ctx.restore();
-}
-
-function loop() {
-    if (!raceActive && cars.length === 0) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    drawTrack();
-
-    // Sort cars by Y for pseudo-depth
-    cars.sort((a, b) => a.renderY - b.renderY);
-
-    cars.forEach(car => {
-        if (raceActive) car.update(0.016, input); // ~60fps
-        car.draw(ctx);
+    allCars.forEach(car => {
+        const angle = Math.atan2(car.position.z, car.position.x);
+        let normAngle = angle;
+        if (normAngle < 0) normAngle += Math.PI * 2;
+        car.checkpoint = normAngle + (car.lap * Math.PI * 2);
     });
 
-    if (raceActive) {
-        updateHUD();
-        requestAnimationFrame(loop);
-    }
+    allCars.sort((a, b) => b.checkpoint - a.checkpoint);
+    
+    const playerIndex = allCars.indexOf(playerCar) + 1;
+    document.getElementById('pos-val').innerText = `${playerIndex}/${allCars.length}`;
+    
+    playerCar.rank = playerIndex;
 }
 
-// Initial Render
-drawTrack();
+function animate() {
+    if (!isGameActive) return;
+    requestAnimationFrame(animate);
+
+    const dt = Math.min(clock.getDelta(), 0.1);
+
+    playerCar.update(dt, keys);
+    aiCars.forEach(ai => ai.update(dt, {}));
+    updateCamera();
+    updateRankings();
+    renderer.render(scene, camera);
+}
+
+init();
 
 </script>
 </body>

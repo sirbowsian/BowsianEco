@@ -1,3 +1,1 @@
-# No changes needed - only source/config files were modified/deleted
-# Source files like .js and .html should not be ignored
-# The current .gitignore is empty and no new ignores are needed
+(index.html is a source file, so no files in the change list match the ignore patterns)
