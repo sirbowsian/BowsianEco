@@ -154,6 +154,63 @@
             text-shadow: 2px 2px 4px black;
         }
         #position-indicator span { font-size: 16px; color: #aaa; }
+
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #444;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        #minimap-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        #pit-notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 100, 0, 0.9);
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            display: none;
+            z-index: 5;
+            text-align: center;
+        }
+
+        #race-complete {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            color: white;
+        }
+
+        .finish-text {
+            font-size: 3rem;
+            color: #0f0;
+            margin-bottom: 20px;
+        }
+
+        .restart-btn {
+            margin-top: 20px;
+            background: #33cc33;
+        }
+        .restart-btn:hover { background: #55dd55; }
     </style>
     <!-- Load Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -172,6 +229,15 @@
 
     <div id="position-indicator">POS: <span id="pos-val">8/8</span></div>
     <div id="lap-timer">00:00.00</div>
+    <div id="minimap"><canvas id="minimap-canvas" width="200" height="200"></canvas></div>
+    <div id="pit-notification">PIT STOP!<br><span style="font-size:16px">Refueling & Changing Tires...</span></div>
+
+    <div id="race-complete">
+        <div class="finish-text">RACE COMPLETE!</div>
+        <div style="font-size: 2rem; margin-bottom: 10px;">Final Position: <span id="final-pos" style="color:#0ff">8th</span></div>
+        <div style="font-size: 1.5rem; color: #aaa;">Best Lap: <span id="best-lap-display">--:--.--</span></div>
+        <button class="restart-btn" onclick="location.reload()">Race Again</button>
+    </div>
 
     <div id="hud" style="display:none;">
         <div class="gauge-cluster">
@@ -226,7 +292,8 @@ const CONFIG = {
     airDensity: 1.225,
     dragCoeff: 0.35,
     frontalArea: 2.1,
-    downforceCoeff: 3.5
+    downforceCoeff: 3.5,
+    totalLaps: 5
 };
 
 // --- Global Variables ---
@@ -236,6 +303,13 @@ let trackMesh, grandstandMesh;
 let isGameActive = false;
 let clock = new THREE.Clock();
 let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+let raceStartTime = 0;
+let currentLapTime = 0;
+let bestLapTime = Infinity;
+let currentLap = 1;
+let lastCheckpoint = -1;
+let minimapCtx;
+let raceFinished = false;
 
 // --- Physics State ---
 class CarPhysics {
@@ -566,7 +640,13 @@ function init() {
         document.getElementById('start-screen').style.display = 'none';
         document.getElementById('hud').style.display = 'flex';
         isGameActive = true;
+        raceStartTime = Date.now();
         clock.start();
+        
+        // Initialize minimap
+        const minimapCanvas = document.getElementById('minimap-canvas');
+        minimapCtx = minimapCanvas.getContext('2d');
+        
         animate();
     });
 }
@@ -716,6 +796,129 @@ function updateRankings() {
     playerCar.rank = playerIndex;
 }
 
+// Lap timing and race management
+function updateLapTiming(dt) {
+    if (raceFinished) return;
+    
+    currentLapTime = (Date.now() - raceStartTime) / 1000;
+    
+    // Check for lap completion
+    const angle = Math.atan2(playerCar.position.z, playerCar.position.x);
+    let normAngle = angle;
+    if (normAngle < 0) normAngle += Math.PI * 2;
+    
+    // Start/finish line is at angle 0
+    if (lastCheckpoint === -1 && normAngle > 5.5) {
+        lastCheckpoint = normAngle;
+    } else if (lastCheckpoint !== -1 && normAngle < 0.3 && lastCheckpoint > 5) {
+        // Lap completed
+        if (currentLapTime < bestLapTime) {
+            bestLapTime = currentLapTime;
+        }
+        
+        currentLap++;
+        lastCheckpoint = -1;
+        raceStartTime = Date.now();
+        currentLapTime = 0;
+        
+        if (currentLap > CONFIG.totalLaps) {
+            finishRace();
+        }
+    }
+    
+    // Update timer display
+    const mins = Math.floor(currentLapTime / 60);
+    const secs = (currentLapTime % 60).toFixed(2);
+    document.getElementById('lap-timer').innerText = 
+        `${mins.toString().padStart(2, '0')}:${secs.padStart(5, '0')}`;
+}
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = (seconds % 60).toFixed(2);
+    return `${mins.toString().padStart(2, '0')}:${secs.padStart(5, '0')}`;
+}
+
+function finishRace() {
+    raceFinished = true;
+    isGameActive = false;
+    
+    document.getElementById('race-complete').style.display = 'flex';
+    document.getElementById('hud').style.display = 'none';
+    document.getElementById('final-pos').innerText = playerCar.rank + getOrdinalSuffix(playerCar.rank);
+    
+    if (bestLapTime !== Infinity) {
+        document.getElementById('best-lap-display').innerText = formatTime(bestLapTime);
+    }
+}
+
+function getOrdinalSuffix(num) {
+    if (num === 1) return 'st';
+    if (num === 2) return 'nd';
+    if (num === 3) return 'rd';
+    return 'th';
+}
+
+// Minimap rendering
+function drawMinimap() {
+    if (!minimapCtx || !playerCar) return;
+    
+    const ctx = minimapCtx;
+    const centerX = 100;
+    const centerY = 100;
+    const scale = 0.2;
+    
+    // Clear
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(0, 0, 200, 200);
+    
+    // Draw track ring
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, CONFIG.trackRadius * scale, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Draw start/finish line
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(centerX + (CONFIG.trackRadius - 5) * scale, centerY);
+    ctx.lineTo(centerX + (CONFIG.trackRadius + 5) * scale, centerY);
+    ctx.stroke();
+    
+    // Draw AI cars
+    aiCars.forEach(ai => {
+        const x = centerX + ai.position.x * scale;
+        const z = centerY + ai.position.z * scale;
+        
+        ctx.fillStyle = '#' + ai.color.toString(16).padStart(6, '0');
+        ctx.beginPath();
+        ctx.arc(x, z, 4, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    
+    // Draw player car
+    const playerX = centerX + playerCar.position.x * scale;
+    const playerZ = centerY + playerCar.position.z * scale;
+    
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath();
+    ctx.arc(playerX, playerZ, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw direction indicator
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(playerX, playerZ);
+    ctx.lineTo(
+        playerX + Math.sin(playerCar.rotation) * 10,
+        playerZ + Math.cos(playerCar.rotation) * 10
+    );
+    ctx.stroke();
+}
+
 function animate() {
     if (!isGameActive) return;
     requestAnimationFrame(animate);
@@ -726,6 +929,8 @@ function animate() {
     aiCars.forEach(ai => ai.update(dt, {}));
     updateCamera();
     updateRankings();
+    updateLapTiming(dt);
+    drawMinimap();
     renderer.render(scene, camera);
 }
 
