@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGEAN: Oaths of Olympus - Greek Myth MMO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #f4e4c1;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: linear-gradient(180deg, #87ceeb 0%, #e0f6ff 50%, #90ee90 70%, #228b22 100%);
+        }
+
+        /* UI Overlay */
+        .ui-panel {
+            position: absolute;
+            background: rgba(26, 26, 46, 0.9);
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+        }
+
+        #stats-panel {
+            top: 20px;
+            left: 20px;
+            width: 250px;
+        }
+
+        #skills-panel {
+            top: 20px;
+            right: 20px;
+            width: 200px;
+        }
+
+        #chat-panel {
+            bottom: 20px;
+            left: 20px;
+            width: 400px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #region-panel {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            min-width: 300px;
+        }
+
+        #dialogue-panel {
+            bottom: 180px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            display: none;
+        }
+
+        h2, h3 {
+            color: #d4af37;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        h2 {
+            font-size: 1.3em;
+            border-bottom: 1px solid #d4af37;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            font-size: 1.1em;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .skill-bar {
+            background: rgba(0,0,0,0.5);
+            border-radius: 3px;
+            height: 8px;
+            margin: 3px 0;
+            overflow: hidden;
+        }
+
+        .skill-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #d4af37, #ffd700);
+            transition: width 0.3s ease;
+        }
+
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+            padding: 5px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+        }
+
+        .chat-message {
+            margin: 3px 0;
+            line-height: 1.3;
+        }
+
+        .chat-timestamp {
+            color: #888;
+            font-size: 0.8em;
+        }
+
+        .chat-username {
+            color: #d4af37;
+            font-weight: bold;
+        }
+
+        #chat-input {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #d4af37;
+            border-radius: 4px;
+            color: #f4e4c1;
+            font-family: inherit;
+        }
+
+        #chat-input:focus {
+            outline: none;
+            border-color: #ffd700;
+        }
+
+        .dialogue-text {
+            font-size: 1em;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .dialogue-options {
+            display: flex;
+            gap: 10px;
+        }
+
+        .dialogue-btn {
+            flex: 1;
+            padding: 8px 12px;
+            background: linear-gradient(180deg, #d4af37, #b8860b);
+            border: none;
+            border-radius: 4px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dialogue-btn:hover {
+            background: linear-gradient(180deg, #ffd700, #d4af37);
+            transform: translateY(-2px);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #d4af37;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+
+        .god-favor {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 5px 0;
+        }
+
+        .god-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .controls-hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(26, 26, 46, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            border: 1px solid #d4af37;
+        }
+
+        .key {
+            display: inline-block;
+            background: #d4af37;
+            color: #1a1a2e;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin: 0 2px;
+        }
+
+        /* Greek decorative elements */
+        .greek-border {
+            border-top: 2px solid #d4af37;
+            border-bottom: 2px solid #d4af37;
+            padding: 5px 0;
+            margin: 10px 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .level-up {
+            animation: pulse 1s ease-in-out 3;
+            color: #ffd700;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Stats Panel -->
+        <div id="stats-panel" class="ui-panel">
+            <h2>🏛️ Hero Status</h2>
+            <div class="greek-border"></div>
+            <div class="stat-row">
+                <span>Level:</span>
+                <span id="level-display">1</span>
+            </div>
+            <div class="stat-row">
+                <span>Experience:</span>
+                <span id="exp-display">0/100</span>
+            </div>
+            <div class="stat-row">
+                <span>Health:</span>
+                <span id="health-display">100/100</span>
+            </div>
+            <div class="stat-row">
+                <span>Region:</span>
+                <span id="region-display">Attika</span>
+            </div>
+            <div class="stat-row">
+                <span>Patron God:</span>
+                <span id="god-display">Athena</span>
+            </div>
+            
+            <h3>Divine Favor</h3>
+            <div class="god-favor">
+                <span class="god-icon" style="background: #4169e1;"></span>
+                <span>Athena:</span>
+                <span id="favor-athena">0</span>
+            </div>
+            <div class="god-favor">
+                <span class="god-icon" style="background: #ffd700;"></span>
+                <span>Zeus:</span>
+                <span id="favor-zeus">0</span>
+            </div>
+            <div class="god-favor">
+                <span class="god-icon" style="background: #20b2aa;"></span>
+                <span>Poseidon:</span>
+                <span id="favor-poseidon">0</span>
+            </div>
+        </div>
+
+        <!-- Skills Panel -->
+        <div id="skills-panel" class="ui-panel">
+            <h2>⚔️ Skills</h2>
+            <div class="greek-border"></div>
+            
+            <div class="stat-row">
+                <span>Warfare</span>
+                <span id="warfare-level">1</span>
+            </div>
+            <div class="skill-bar"><div class="skill-fill" id="warfare-bar" style="width: 10%"></div></div>
+            
+            <div class="stat-row">
+                <span>Archery</span>
+                <span id="archery-level">1</span>
+            </div>
+            <div class="skill-bar"><div class="skill-fill" id="archery-bar" style="width: 10%"></div></div>
+            
+            <div class="stat-row">
+                <span>Sailing</span>
+                <span id="sailing-level">1</span>
+            </div>
+            <div class="skill-bar"><div class="skill-fill" id="sailing-bar" style="width: 10%"></div></div>
+            
+            <div class="stat-row">
+                <span>Smithing</span>
+                <span id="smithing-level">1</span>
+            </div>
+            <div class="skill-bar"><div class="skill-fill" id="smithing-bar" style="width: 10%"></div></div>
+            
+            <div class="stat-row">
+                <span>Piety</span>
+                <span id="piety-level">1</span>
+            </div>
+            <div class="skill-bar"><div class="skill-fill" id="piety-bar" style="width: 10%"></div></div>
+        </div>
+
+        <!-- Region Panel -->
+        <div id="region-panel" class="ui-panel">
+            <h2 id="region-name">🏛️ Attika</h2>
+            <p id="region-desc">Starting region with olive groves and marble quarries</p>
+        </div>
+
+        <!-- Chat Panel -->
+        <div id="chat-panel" class="ui-panel">
+            <h2>💬 Agora Chat</h2>
+            <div class="greek-border"></div>
+            <div id="chat-messages"></div>
+            <input type="text" id="chat-input" placeholder="Speak in the agora... (Press Enter)">
+        </div>
+
+        <!-- Dialogue Panel -->
+        <div id="dialogue-panel" class="ui-panel">
+            <button class="close-btn" onclick="closeDialogue()">×</button>
+            <h3 id="dialogue-npc">NPC Name</h3>
+            <p class="dialogue-text" id="dialogue-text">Dialogue goes here...</p>
+            <div class="dialogue-options" id="dialogue-options"></div>
+        </div>
+
+        <!-- Controls Hint -->
+        <div class="controls-hint ui-panel">
+            <strong>Controls:</strong><br>
+            <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> Move<br>
+            <span class="key">T</span> Train Skills<br>
+            <span class="key">Click</span> Interact<br>
+            <span class="key">Enter</span> Chat
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

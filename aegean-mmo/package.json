@@ -1,0 +1,21 @@
+{
+  "name": "aegean-mmo",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "A multiplayer online game inspired by RuneScape's gameplay mechanics and Assassin's Creed Odyssey's ancient Greek setting.",
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3",
+    "three": "^0.186.0"
+  },
+  "directories": {
+    "doc": "docs"
+  }
+}
